@@ -12,8 +12,10 @@ export default {
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY
     },
+    
     openRouterApiKey: process.env.OPENROUTER_API_KEY,
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     emailSender: {
         email: process.env.EMAIL,
         app_pass: process.env.APP_PASS

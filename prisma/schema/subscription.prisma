@@ -15,7 +15,7 @@ model Subscription {
   status        SubscriptionStatus @default(ACTIVE)
   startedAt     DateTime           @default(now())
   expiresAt     DateTime
-  transactionId String?
+  transactionId String?            @unique
 
   user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
