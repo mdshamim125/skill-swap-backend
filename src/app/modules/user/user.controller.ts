@@ -7,10 +7,10 @@ import { userFilterableFields } from "./user.constant";
 import { Role } from "@prisma/client";
 
 // ===============================
-// CREATE USER (any role)
+// CREATE USER
 // ===============================
 const createUser = catchAsync(async (req: Request, res: Response) => {
-  const role = req.body.role as Role; // role passed in request
+  const role = req.body.role as Role;
   const result = await UserService.createUser(req, role);
 
   sendResponse(res, {
@@ -28,7 +28,12 @@ const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const filters = pick(req.query, userFilterableFields);
   const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
 
-  const result = await UserService.getAllFromDB(filters, options);
+  const user = req.user!; // Safe because auth middleware sets it
+
+  const result = await UserService.getAllFromDB(filters, options, {
+    id: user.id,
+    role: user.role,
+  });
 
   sendResponse(res, {
     statusCode: 200,
@@ -43,7 +48,12 @@ const getAllUsers = catchAsync(async (req: Request, res: Response) => {
 // GET SINGLE USER
 // ===============================
 const getUserById = catchAsync(async (req: Request, res: Response) => {
-  const result = await UserService.getById(req.params.id);
+  const user = req.user!;
+
+  const result = await UserService.getById(req.params.id, {
+    id: user.id,
+    role: user.role,
+  });
 
   sendResponse(res, {
     statusCode: 200,
@@ -54,10 +64,15 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ===============================
-// UPDATE USER PROFILE
+// UPDATE USER
 // ===============================
 const updateUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await UserService.updateUser(req.params.id, req.body);
+  const user = req.user!;
+
+  const result = await UserService.updateUser(req.params.id, req.body, {
+    id: user.id,
+    role: user.role,
+  });
 
   sendResponse(res, {
     statusCode: 200,
@@ -71,7 +86,12 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
 // DELETE USER
 // ===============================
 const deleteUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await UserService.deleteUser(req.params.id);
+  const user = req.user!;
+
+  const result = await UserService.deleteUser(req.params.id, {
+    id: user.id,
+    role: user.role,
+  });
 
   sendResponse(res, {
     statusCode: 200,
@@ -82,11 +102,17 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
 });
 
 // ===============================
-// UPDATE USER ROLE (Admin only)
+// UPDATE USER ROLE
 // ===============================
 const updateUserRole = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+
   const { role } = req.body;
-  const result = await UserService.updateUserRole(req.params.id, role);
+  const result = await UserService.updateUserRole(
+    req.params.id,
+    role,
+    user.role
+  );
 
   sendResponse(res, {
     statusCode: 200,

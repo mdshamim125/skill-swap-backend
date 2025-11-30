@@ -45,7 +45,10 @@ const createUser = async (req: Request, role: Role) => {
       },
     });
 
-    return createdUser;
+    return {
+      ...createdUser,
+      password: undefined, // hide password
+    };
   });
 
   return result;
@@ -53,8 +56,10 @@ const createUser = async (req: Request, role: Role) => {
 
 // ===============================
 // GET ALL USERS
+// Admin: can see all
+// User: only see themselves
 // ===============================
-const getAllFromDB = async (params: any, options: IOptions) => {
+const getAllFromDB = async (params: any, options: IOptions, requester: { id: string; role: Role }) => {
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
@@ -89,6 +94,11 @@ const getAllFromDB = async (params: any, options: IOptions) => {
     });
   }
 
+  // RBAC: normal users can only see themselves
+  if (requester.role !== Role.ADMIN) {
+    andConditions.push({ id: requester.id });
+  }
+
   const whereConditions: Prisma.UserWhereInput =
     andConditions.length > 0 ? { AND: andConditions } : {};
 
@@ -102,23 +112,44 @@ const getAllFromDB = async (params: any, options: IOptions) => {
 
   const total = await prisma.user.count({ where: whereConditions });
 
-  return { meta: { page, limit, total }, data: users };
+  // remove password before returning
+  const safeUsers = users.map(({ password, ...rest }) => rest);
+
+  return { meta: { page, limit, total }, data: safeUsers };
 };
 
 // ===============================
 // GET SINGLE USER
 // ===============================
-const getById = async (id: string) => {
-  return prisma.user.findUnique({
+const getById = async (id: string, requester: { id: string; role: Role }) => {
+  if (requester.role !== Role.ADMIN && requester.id !== id) {
+    throw new Error("Unauthorized");
+  }
+
+  const user = await prisma.user.findUnique({
     where: { id },
     include: { profile: true },
   });
+
+  if (!user) throw new Error("User not found");
+
+  const { password, ...safeUser } = user;
+  return safeUser;
 };
 
 // ===============================
-// UPDATE USER PROFILE
+// UPDATE USER PROFILE (with RBAC)
 // ===============================
-const updateUser = async (id: string, payload: any) => {
+const updateUser = async (
+  targetUserId: string,
+  payload: any,
+  requester: { id: string; role: Role }
+) => {
+  // Only admin or owner can update
+  if (requester.role !== Role.ADMIN && requester.id !== targetUserId) {
+    throw new Error("Unauthorized");
+  }
+
   let avatarUrl: string | undefined;
 
   if (payload.file) {
@@ -128,22 +159,28 @@ const updateUser = async (id: string, payload: any) => {
 
   const result = await prisma.$transaction(async (tx) => {
     if (payload.email || payload.password) {
+      const updateData: any = {};
+      if (payload.email) updateData.email = payload.email.trim();
+      if (payload.password) updateData.password = await bcrypt.hash(payload.password, 10);
+
       await tx.user.update({
-        where: { id },
-        data: {
-          email: payload.email,
-          password: payload.password
-            ? await bcrypt.hash(payload.password, 10)
-            : undefined,
-        },
+        where: { id: targetUserId },
+        data: updateData,
       });
     }
 
     const { email, password, file, ...profileData } = payload;
 
+    // Optional validation for numeric fields
+    if (profileData.hourlyRate && profileData.hourlyRate < 0)
+      throw new Error("Hourly rate cannot be negative");
+
     await tx.profile.update({
-      where: { userId: id },
-      data: { ...profileData, avatarUrl: avatarUrl ?? profileData.avatarUrl },
+      where: { userId: targetUserId },
+      data: {
+        ...profileData,
+        avatarUrl: avatarUrl ?? profileData.avatarUrl,
+      },
     });
 
     return true;
@@ -153,16 +190,25 @@ const updateUser = async (id: string, payload: any) => {
 };
 
 // ===============================
-// DELETE USER
+// DELETE USER (RBAC)
 // ===============================
-const deleteUser = async (id: string) => {
-  return prisma.user.delete({ where: { id } });
+const deleteUser = async (
+  targetUserId: string,
+  requester: { id: string; role: Role }
+) => {
+  if (requester.role !== Role.ADMIN && requester.id !== targetUserId) {
+    throw new Error("Unauthorized");
+  }
+
+  return prisma.user.delete({ where: { id: targetUserId } });
 };
 
 // ===============================
 // UPDATE USER ROLE (Admin Only)
 // ===============================
-const updateUserRole = async (userId: string, newRole: Role) => {
+const updateUserRole = async (userId: string, newRole: Role, requesterRole: Role) => {
+  if (requesterRole !== Role.ADMIN) throw new Error("Unauthorized");
+
   if (!Object.values(Role).includes(newRole)) {
     throw new Error("Invalid role");
   }

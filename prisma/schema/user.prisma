@@ -4,6 +4,7 @@ model User {
   password   String
   name       String?
   role       Role     @default(USER)
+  status     UserStatus  @default(ACTIVE)       
   isVerified Boolean  @default(false)
   isPremium  Boolean  @default(false)
   createdAt  DateTime @default(now())

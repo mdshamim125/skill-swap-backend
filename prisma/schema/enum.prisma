@@ -5,6 +5,13 @@ enum Role {
   ADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+
 enum SkillLevel {
   BEGINNER
   INTERMEDIATE
