@@ -1,0 +1,24 @@
+model SubscriptionPlan {
+  id            String         @id @default(uuid())
+  name          String
+  price         Int
+  durationDays  Int
+  description   String?
+  createdAt     DateTime       @default(now())
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id            String             @id @default(uuid())
+  userId        String
+  planId        String
+  status        SubscriptionStatus @default(ACTIVE)
+  startedAt     DateTime           @default(now())
+  expiresAt     DateTime
+  transactionId String?
+
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

@@ -1,0 +1,19 @@
+model Profile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  bio          String?
+  avatarUrl    String?
+  interests    String[] @default([])
+  languages    String[] @default([])
+  skills    String[] @default([])      
+  expertise String? 
+  travelStyles String[] @default([])
+  country      String?
+  city         String?
+  experience   String?
+  hourlyRate   Int?
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

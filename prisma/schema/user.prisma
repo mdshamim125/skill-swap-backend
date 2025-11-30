@@ -1,0 +1,25 @@
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  name       String?
+  role       Role     @default(USER)
+  isVerified Boolean  @default(false)
+  isPremium  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  profile         Profile?
+  skillsOffered   Skill[]   @relation("OfferedSkills")
+  bookingsMade    Booking[] @relation("BookingsMade")
+  bookingsHosted  Booking[] @relation("BookingsHosted")
+  reviewsGiven    Review[]  @relation("ReviewsGiven")
+  reviewsReceived Review[]  @relation("ReviewsReceived")
+
+  sentMessages     Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageReceiver")
+
+  payments      Payment[]
+  subscriptions Subscription[]
+  notifications Notification[]
+}

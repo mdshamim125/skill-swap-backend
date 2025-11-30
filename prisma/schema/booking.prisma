@@ -1,0 +1,21 @@
+model Booking {
+  id          String        @id @default(uuid())
+  menteeId    String
+  mentorId    String
+  skillId     String
+  scheduledAt DateTime
+  durationMin Int
+  status      BookingStatus @default(PENDING)
+  pricePaid   Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  mentee  User     @relation("BookingsMade", fields: [menteeId], references: [id], onDelete: Cascade)
+  mentor  User     @relation("BookingsHosted", fields: [mentorId], references: [id], onDelete: Cascade)
+  skill   Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  reviews Review[]
+
+  @@index([mentorId])
+  @@index([menteeId])
+  @@index([scheduledAt])
+}

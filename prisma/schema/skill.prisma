@@ -1,0 +1,18 @@
+model Skill {
+  id           String     @id @default(uuid())
+  title        String
+  category     String
+  description  String?
+  level        SkillLevel @default(BEGINNER)
+  pricePerHour Int?
+  tags         String[]   @default([])
+  isPublished  Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  ownerId  String
+  owner    User      @relation("OfferedSkills", fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([title])
+  @@index([category])
+}

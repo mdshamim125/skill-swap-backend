@@ -1,0 +1,13 @@
+model Review {
+  id           String   @id @default(uuid())
+  reviewerId   String
+  targetUserId String
+  bookingId    String?
+  rating       Int
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  reviewer   User     @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  targetUser User     @relation("ReviewsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  booking    Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+}
