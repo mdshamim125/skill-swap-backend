@@ -59,7 +59,11 @@ const createUser = async (req: Request, role: Role) => {
 // Admin: can see all
 // User: only see themselves
 // ===============================
-const getAllFromDB = async (params: any, options: IOptions, requester: { id: string; role: Role }) => {
+const getAllFromDB = async (
+  params: any,
+  options: IOptions,
+  requester: { id: string; role: Role }
+) => {
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
@@ -94,9 +98,18 @@ const getAllFromDB = async (params: any, options: IOptions, requester: { id: str
     });
   }
 
-  // RBAC: normal users can only see themselves
+  // RBAC: normal users can only see themselves and active mentors
   if (requester.role !== Role.ADMIN) {
-    andConditions.push({ id: requester.id });
+    andConditions.push({
+      OR: [
+        { id: requester.id }, // always show self
+        {
+          role: Role.MENTOR,
+          isPremium: true,
+          premiumExpires: { gt: new Date() }, // only active premium mentors
+        },
+      ],
+    });
   }
 
   const whereConditions: Prisma.UserWhereInput =
@@ -161,7 +174,8 @@ const updateUser = async (
     if (payload.email || payload.password) {
       const updateData: any = {};
       if (payload.email) updateData.email = payload.email.trim();
-      if (payload.password) updateData.password = await bcrypt.hash(payload.password, 10);
+      if (payload.password)
+        updateData.password = await bcrypt.hash(payload.password, 10);
 
       await tx.user.update({
         where: { id: targetUserId },
@@ -206,7 +220,11 @@ const deleteUser = async (
 // ===============================
 // UPDATE USER ROLE (Admin Only)
 // ===============================
-const updateUserRole = async (userId: string, newRole: Role, requesterRole: Role) => {
+const updateUserRole = async (
+  userId: string,
+  newRole: Role,
+  requesterRole: Role
+) => {
   if (requesterRole !== Role.ADMIN) throw new Error("Unauthorized");
 
   if (!Object.values(Role).includes(newRole)) {

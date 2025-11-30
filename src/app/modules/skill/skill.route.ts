@@ -16,4 +16,4 @@ router.post("/", auth(), upload.single("file"), SkillController.createSkill); //
 router.put("/:id", auth(), upload.single("file"), SkillController.updateSkill); // owner or admin checked in service
 router.delete("/:id", auth(), SkillController.deleteSkill); // owner or admin checked in service
 
-export default router;
+export const skillRoutes = router;
