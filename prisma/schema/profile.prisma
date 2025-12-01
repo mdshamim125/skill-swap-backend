@@ -5,8 +5,8 @@ model Profile {
   avatarUrl    String?
   interests    String[] @default([])
   languages    String[] @default([])
-  skills    String[] @default([])      
-  expertise String? 
+  skills       String[] @default([])
+  expertise    String?
   travelStyles String[] @default([])
   country      String?
   city         String?

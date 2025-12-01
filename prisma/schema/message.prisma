@@ -1,13 +1,21 @@
+model Conversation {
+  id        String    @id @default(cuid())
+  userAId   String
+  userBId   String
+  userA     User      @relation("UserAConversations", fields: [userAId], references: [id])
+  userB     User      @relation("UserBConversations", fields: [userBId], references: [id])
+  messages  Message[]
+  createdAt DateTime  @default(now())
+}
+
 model Message {
-  id         String   @id @default(uuid())
-  senderId   String
-  receiverId String
-  content    String
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@index([senderId, receiverId])
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  receiverId     String
+  text           String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("Message_sender", fields: [senderId], references: [id])
+  receiver       User         @relation("Message_receiver", fields: [receiverId], references: [id])
+  createdAt      DateTime     @default(now())
 }

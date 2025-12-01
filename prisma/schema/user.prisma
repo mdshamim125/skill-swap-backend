@@ -1,39 +1,34 @@
 model User {
-  id         String      @id @default(uuid())
-  email      String      @unique
-  password   String
-  name       String?
-  avatar     String?
-  role       Role        @default(USER)
-  status     UserStatus  @default(ACTIVE)
-  isVerified Boolean     @default(false)     // for mentor verification badge
-  isPremium  Boolean     @default(false)
-  premiumExpires DateTime?                   // <--- premium expiration date
-  averageRating Float @default(0)
-
-
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  // ======================
-  // RELATIONS
-  // ======================
+  id             String     @id @default(uuid())
+  email          String     @unique
+  password       String
+  name           String?
+  avatar         String?
+  role           Role       @default(USER)
+  status         UserStatus @default(ACTIVE)
+  isVerified     Boolean    @default(false)
+  isPremium      Boolean    @default(false)
+  premiumExpires DateTime?
+  averageRating  Float      @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   profile         Profile?
-  skillsOffered   Skill[]     @relation("OfferedSkills")
+  skillsOffered   Skill[]   @relation("OfferedSkills")
+  bookingsMade    Booking[] @relation("BookingsMade")
+  bookingsHosted  Booking[] @relation("BookingsHosted")
+  reviewsGiven    Review[]  @relation("ReviewsGiven")
+  reviewsReceived Review[]  @relation("ReviewsReceived")
 
-  bookingsMade    Booking[]   @relation("BookingsMade")
-  bookingsHosted  Booking[]   @relation("BookingsHosted")
+  messagesSent     Message[] @relation("Message_sender")
+  messagesReceived Message[] @relation("Message_receiver")
 
-  reviewsGiven    Review[]    @relation("ReviewsGiven")
-  reviewsReceived Review[]    @relation("ReviewsReceived")
+  conversationsAsUserA Conversation[] @relation("UserAConversations")
+  conversationsAsUserB Conversation[] @relation("UserBConversations")
 
-  sentMessages     Message[]  @relation("MessageSender")
-  receivedMessages Message[]  @relation("MessageReceiver")
-
-  payments        Payment[]
-  subscriptions   Subscription[]
-  notifications   Notification[]
+  payments      Payment[]
+  subscriptions Subscription[]
+  notifications Notification[]
 
   @@index([email])
   @@index([role])
