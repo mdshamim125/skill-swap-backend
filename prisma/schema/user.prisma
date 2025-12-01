@@ -3,11 +3,14 @@ model User {
   email      String      @unique
   password   String
   name       String?
+  avatar     String?
   role       Role        @default(USER)
   status     UserStatus  @default(ACTIVE)
   isVerified Boolean     @default(false)     // for mentor verification badge
   isPremium  Boolean     @default(false)
   premiumExpires DateTime?                   // <--- premium expiration date
+  averageRating Float @default(0)
+
 
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
