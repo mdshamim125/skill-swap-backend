@@ -25,7 +25,7 @@ const globalErrorHandler = (
 
   let statusCode = err.statusCode || httpStatus.INTERNAL_SERVER_ERROR;
   let message = err.message || "Something went wrong!";
-  let errorDetails: any = err;
+  let errorDetails: any = err.errors || err;
 
   // ===============================
   // Prisma Errors
