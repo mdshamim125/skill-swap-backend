@@ -2,7 +2,7 @@
   "name": "skill-swap-backend",
   "version": "1.0.0",
   "main": "server.js",
-  "author": "shafayat",
+  "author": "Md Shamim ",
   "license": "MIT",
   "prisma": {
     "schema": "./prisma/schema"

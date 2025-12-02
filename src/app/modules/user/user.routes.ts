@@ -22,13 +22,10 @@ router.get("/:id", auth(), UserController.getUserById);
 // ===============================
 router.post(
   "/create",
-  auth(Role.ADMIN),
-  fileUploader.upload.single("file"),
+  // fileUploader.upload.single("file"),
   (req: Request, res: Response, next: NextFunction) => {
     // Parse and validate user input
-    const parsed = createUserSchemaValidation.parse(
-      JSON.parse(req.body.data)
-    );
+    const parsed = createUserSchemaValidation.parse(req.body);
     req.body = parsed;
     return UserController.createUser(req, res, next);
   }

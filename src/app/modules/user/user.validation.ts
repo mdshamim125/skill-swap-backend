@@ -23,33 +23,29 @@ const profileSchema = z.object({
 });
 
 export const createUserSchemaValidation = z.object({
+  email: z.string().email("Valid email required"),
+  name: z.string().min(1, "Name is required"),
   password: passwordSchema,
-  user: z.object({
-    email: z.string().email("Valid email required"),
-    name: z.string().min(1, "Name is required"),
+  avatar: z.string().url().optional(),
+  role: RoleEnum.optional(), // default: USER
+  status: UserStatusEnum.optional(),
+  isVerified: z.boolean().optional(),
+  isPremium: z.boolean().optional(),
+  premiumExpires: z.string().datetime().optional(),
+  profile: profileSchema.optional(),
+});
+
+export const updateUserSchemaValidation = z
+  .object({
+    email: z.string().email().optional(),
+    name: z.string().optional(),
+    password: passwordSchema.optional(),
     avatar: z.string().url().optional(),
-    role: RoleEnum.optional(), // default: USER
+    role: RoleEnum.optional(),
     status: UserStatusEnum.optional(),
     isVerified: z.boolean().optional(),
     isPremium: z.boolean().optional(),
     premiumExpires: z.string().datetime().optional(),
     profile: profileSchema.optional(),
-  }),
-});
-
-export const updateUserSchemaValidation = z.object({
-  password: passwordSchema.optional(),
-  user: z
-    .object({
-      email: z.string().email().optional(),
-      name: z.string().optional(),
-      avatar: z.string().url().optional(),
-      role: RoleEnum.optional(),
-      status: UserStatusEnum.optional(),
-      isVerified: z.boolean().optional(),
-      isPremium: z.boolean().optional(),
-      premiumExpires: z.string().datetime().optional(),
-      profile: profileSchema.optional(),
-    })
-    .partial(),
-});
+  })
+  .partial();
