@@ -1,112 +1,55 @@
 import z from "zod";
 
-//
-// COMMON FIELDS
-//
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+export const RoleEnum = z.enum(["USER", "PREMIUM_USER", "MENTOR", "ADMIN"]);
+export const UserStatusEnum = z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]);
 
-//
-// =============== USER CREATE ===============
-//
-export const createUserValidationSchema = z.object({
+const passwordSchema = z
+  .string()
+  .min(6, "Password must be at least 6 characters");
+
+const profileSchema = z.object({
+  bio: z.string().optional(),
+  avatarUrl: z.string().url().optional(),
+  interests: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  expertise: z.string().optional(),
+  travelStyles: z.array(z.string()).optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  experience: z.string().optional(),
+  hourlyRate: z.number().optional(),
+  phone: z.string().optional(),
+});
+
+export const createUserSchemaValidation = z.object({
   password: passwordSchema,
   user: z.object({
-    name: z.string().nonempty("Name is required"),
-    email: z.string().email("Valid email is required"),
-    bio: z.string().optional(),
-    skills: z.array(z.string()).optional(),
-    interests: z.array(z.string()).optional(),
-    profileImage: z.string().url().optional(),
+    email: z.string().email("Valid email required"),
+    name: z.string().min(1, "Name is required"),
+    avatar: z.string().url().optional(),
+    role: RoleEnum.optional(), // default: USER
+    status: UserStatusEnum.optional(),
+    isVerified: z.boolean().optional(),
+    isPremium: z.boolean().optional(),
+    premiumExpires: z.string().datetime().optional(),
+    profile: profileSchema.optional(),
   }),
 });
 
-//
-// =============== USER UPDATE ===============
-//
-export const updateUserValidationSchema = z.object({
+export const updateUserSchemaValidation = z.object({
   password: passwordSchema.optional(),
   user: z
     .object({
-      name: z.string().optional(),
       email: z.string().email().optional(),
-      bio: z.string().optional(),
-      skills: z.array(z.string()).optional(),
-      interests: z.array(z.string()).optional(),
-      profileImage: z.string().url().optional(),
+      name: z.string().optional(),
+      avatar: z.string().url().optional(),
+      role: RoleEnum.optional(),
+      status: UserStatusEnum.optional(),
+      isVerified: z.boolean().optional(),
+      isPremium: z.boolean().optional(),
+      premiumExpires: z.string().datetime().optional(),
+      profile: profileSchema.optional(),
     })
     .partial(),
 });
-
-//
-// =============== MENTOR CREATE ===============
-//
-export const createMentorValidationSchema = z.object({
-  password: passwordSchema,
-  mentor: z.object({
-    name: z.string().nonempty("Name is required"),
-    email: z.string().email("Valid email is required"),
-    expertise: z.array(z.string()).min(1, "At least one expertise required"),
-    yearsOfExperience: z.number().min(0, "Experience must be positive"),
-    bio: z.string().optional(),
-    hourlyRate: z.number().min(1, "Hourly rate must be at least 1"),
-    profileImage: z.string().url().optional(),
-    languages: z.array(z.string()).optional(),
-  }),
-});
-
-//
-// =============== MENTOR UPDATE ===============
-//
-export const updateMentorValidationSchema = z.object({
-  password: passwordSchema.optional(),
-  mentor: z
-    .object({
-      name: z.string().optional(),
-      email: z.string().email().optional(),
-      expertise: z.array(z.string()).optional(),
-      yearsOfExperience: z.number().optional(),
-      bio: z.string().optional(),
-      hourlyRate: z.number().optional(),
-      profileImage: z.string().url().optional(),
-      languages: z.array(z.string()).optional(),
-    })
-    .partial(),
-});
-
-//
-// =============== ADMIN CREATE ===============
-//
-export const createAdminValidationSchema = z.object({
-  password: passwordSchema,
-  admin: z.object({
-    name: z.string().nonempty("Admin name is required"),
-    email: z.string().email("Valid email is required"),
-  }),
-});
-
-//
-// =============== ADMIN UPDATE ===============
-//
-export const updateAdminValidationSchema = z.object({
-  password: passwordSchema.optional(),
-  admin: z
-    .object({
-      name: z.string().optional(),
-      email: z.string().email().optional(),
-    })
-    .partial(),
-});
-
-//
-// EXPORT ALL VALIDATIONS
-//
-export const UserValidation = {
-  createUserValidationSchema,
-  updateUserValidationSchema,
-
-  createMentorValidationSchema,
-  updateMentorValidationSchema,
-
-  createAdminValidationSchema,
-  updateAdminValidationSchema,
-};

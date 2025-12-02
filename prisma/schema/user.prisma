@@ -2,7 +2,7 @@ model User {
   id             String     @id @default(uuid())
   email          String     @unique
   password       String
-  name           String?
+  name           String     
   avatar         String?
   role           Role       @default(USER)
   status         UserStatus @default(ACTIVE)

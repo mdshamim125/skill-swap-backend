@@ -25,6 +25,11 @@ const createUser = async (req: Request, role: Role) => {
         email: req.body.email,
         password: hashedPassword,
         role,
+        name: req.body.name,
+        avatar: avatarUrl,
+        isVerified: req.body.isVerified || false,
+        isPremium: req.body.isPremium || false,
+        premiumExpires: req.body.premiumExpires,
       },
     });
 

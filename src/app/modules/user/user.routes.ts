@@ -1,9 +1,9 @@
 import express, { NextFunction, Request, Response } from "express";
 import { UserController } from "./user.controller";
 import { fileUploader } from "../../helper/fileUploader";
-import { UserValidation } from "./user.validation";
 import auth from "../../middlewares/auth";
 import { Role } from "@prisma/client";
+import { createUserSchemaValidation } from "./user.validation";
 
 const router = express.Router();
 
@@ -26,7 +26,7 @@ router.post(
   fileUploader.upload.single("file"),
   (req: Request, res: Response, next: NextFunction) => {
     // Parse and validate user input
-    const parsed = UserValidation.createUserValidationSchema.parse(
+    const parsed = createUserSchemaValidation.parse(
       JSON.parse(req.body.data)
     );
     req.body = parsed;

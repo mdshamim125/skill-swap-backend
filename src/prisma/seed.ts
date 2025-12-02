@@ -1,4 +1,4 @@
-import { prisma } from "../src/app/shared/prisma";
+import { prisma } from "../app/shared/prisma";
 
 // prisma/seed.ts
 async function main() {
