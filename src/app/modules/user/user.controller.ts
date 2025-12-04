@@ -5,6 +5,7 @@ import { UserService } from "./user.service";
 import pick from "../../helper/pick";
 import { userFilterableFields } from "./user.constant";
 import { Role } from "@prisma/client";
+import { prisma } from "../../shared/prisma";
 
 // ===============================
 // CREATE USER
@@ -16,7 +17,7 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: 201,
     success: true,
-    message: `${role} created successfully!`,
+    message: `user created successfully!`,
     data: result,
   });
 });
@@ -69,10 +70,7 @@ const getUserById = catchAsync(async (req: Request, res: Response) => {
 const updateUser = catchAsync(async (req: Request, res: Response) => {
   const user = req.user!;
 
-  const result = await UserService.updateUser(req.params.id, req.body, {
-    id: user.id,
-    role: user.role,
-  });
+  const result = await UserService.updateUser(req);
 
   sendResponse(res, {
     statusCode: 200,
@@ -122,6 +120,47 @@ const updateUserRole = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+
+// ===============================
+// GET MY PROFILE
+// ===============================
+const getMyProfile = catchAsync(async (req: Request, res: Response) => {
+  // req.user should be populated by auth middleware
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return sendResponse(res, {
+      statusCode: 401,
+      success: false,
+      message: "Unauthorized",
+      data: null,
+    });
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    include: {
+      skills: true, // include selected skills
+    },
+  });
+
+  if (!profile) {
+    return sendResponse(res, {
+      statusCode: 404,
+      success: false,
+      message: "Profile not found",
+      data: null,
+    });
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Profile fetched successfully",
+    data: profile,
+  });
+});
+
 export const UserController = {
   createUser,
   getAllUsers,
@@ -129,4 +168,5 @@ export const UserController = {
   updateUser,
   deleteUser,
   updateUserRole,
+  getMyProfile
 };

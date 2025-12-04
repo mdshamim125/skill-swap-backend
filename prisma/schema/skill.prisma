@@ -1,6 +1,6 @@
 model Skill {
   id           String     @id @default(uuid())
-  title        String
+  title        String     @unique
   category     String
   description  String?
   level        SkillLevel @default(BEGINNER)
@@ -9,10 +9,20 @@ model Skill {
   isPublished  Boolean    @default(true)
   createdAt    DateTime   @default(now())
 
-  ownerId  String
-  owner    User      @relation("OfferedSkills", fields: [ownerId], references: [id], onDelete: Cascade)
+  // ADMIN skill or custom user skill
+  isCustom     Boolean @default(false)
+
+  // If created by user (custom), else null for admin-created skills
+  createdBy    String?
+
+  // When user offers their own custom skill
+  ownerId  String?
+  owner    User?     @relation("UserOfferedSkills", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Profile can pick skills
+  profiles Profile[] @relation("ProfileSkills")
+
   bookings Booking[]
 
-  @@index([title])
   @@index([category])
 }

@@ -1,21 +1,24 @@
 // src/modules/skill/skill.controller.ts
+
 import { Request, Response } from "express";
 import catchAsync from "../../shared/catchAsync";
 import sendResponse from "../../shared/sendResponse";
 import { SkillService } from "./skill.service";
-import { paginationHelper } from "../../helper/paginationHelper";
-import { Role } from "@prisma/client";
 import pick from "../../helper/pick";
 import { skillFilterableFields } from "./skill.constant";
 
 // CREATE SKILL
 const createSkill = catchAsync(async (req: Request, res: Response) => {
-  // auth middleware must set req.user
-  const requester = req.user!;
+  const user = req.user!;
+
   const payload = req.body;
   const file = req.file as Express.Multer.File | undefined;
 
-  const result = await SkillService.createSkill(requester.id, payload, file);
+  const result = await SkillService.createSkill(
+    { id: user.id, role: user.role }, // <-- correct object
+    payload,
+    file
+  );
 
   sendResponse(res, {
     statusCode: 201,
@@ -29,7 +32,8 @@ const createSkill = catchAsync(async (req: Request, res: Response) => {
 const getAllSkills = catchAsync(async (req: Request, res: Response) => {
   const filters = pick(req.query, skillFilterableFields);
   const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  const result = await SkillService.getAllSkills({ ...filters, ...req.query }, options);
+
+  const result = await SkillService.getAllSkills(filters, options);
 
   sendResponse(res, {
     statusCode: 200,
@@ -54,9 +58,17 @@ const getSkillById = catchAsync(async (req: Request, res: Response) => {
 
 // UPDATE SKILL
 const updateSkill = catchAsync(async (req: Request, res: Response) => {
-  const requester = req.user!;
-  const payload = { ...req.body, file: req.file };
-  const result = await SkillService.updateSkill(req.params.id, payload, { id: requester.id, role: requester.role });
+  const user = req.user!;
+  const payload = {
+    ...req.body,
+    file: req.file,
+  };
+
+  const result = await SkillService.updateSkill(
+    req.params.id,
+    payload,
+    { id: user.id, role: user.role } // <-- correct object
+  );
 
   sendResponse(res, {
     statusCode: 200,
@@ -68,8 +80,12 @@ const updateSkill = catchAsync(async (req: Request, res: Response) => {
 
 // DELETE SKILL
 const deleteSkill = catchAsync(async (req: Request, res: Response) => {
-  const requester = req.user!;
-  const result = await SkillService.deleteSkill(req.params.id, { id: requester.id, role: requester.role });
+  const user = req.user!;
+
+  const result = await SkillService.deleteSkill(
+    req.params.id,
+    { id: user.id, role: user.role } // <-- correct object
+  );
 
   sendResponse(res, {
     statusCode: 200,

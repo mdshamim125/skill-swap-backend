@@ -7,19 +7,19 @@ const passwordSchema = z
   .string()
   .min(6, "Password must be at least 6 characters");
 
-const profileSchema = z.object({
+const ProfileSchema = z.object({
   bio: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  phone: z.string().optional(),
+  hourlyRate: z.coerce.number().optional(),
+
   interests: z.array(z.string()).optional(),
   languages: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
-  expertise: z.string().optional(),
-  travelStyles: z.array(z.string()).optional(),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  experience: z.string().optional(),
-  hourlyRate: z.number().optional(),
-  phone: z.string().optional(),
+
+  expertise: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]),
+  experience: z.coerce.number().int().nonnegative().optional(),
 });
 
 export const createUserSchemaValidation = z.object({
@@ -32,7 +32,7 @@ export const createUserSchemaValidation = z.object({
   isVerified: z.boolean().optional(),
   isPremium: z.boolean().optional(),
   premiumExpires: z.string().datetime().optional(),
-  profile: profileSchema.optional(),
+  profile: ProfileSchema.optional(),
 });
 
 export const updateUserSchemaValidation = z
@@ -46,6 +46,6 @@ export const updateUserSchemaValidation = z
     isVerified: z.boolean().optional(),
     isPremium: z.boolean().optional(),
     premiumExpires: z.string().datetime().optional(),
-    profile: profileSchema.optional(),
+    profile: ProfileSchema.optional(),
   })
   .partial();

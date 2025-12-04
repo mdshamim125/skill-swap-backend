@@ -1,4 +1,3 @@
-// src/modules/skill/skill.service.ts
 import { prisma } from "../../shared/prisma";
 import { ISkillCreatePayload, ISkillUpdatePayload } from "./skill.interface";
 import { fileUploader } from "../../helper/fileUploader";
@@ -6,12 +5,18 @@ import { Prisma, Role } from "@prisma/client";
 import { paginationHelper, IOptions } from "../../helper/paginationHelper";
 import { skillSearchableFields, skillFilterableFields } from "./skill.constant";
 
-// Create skill (ownerId from authenticated user)
+// ===============================
+// Admin creates skill
+// ===============================
 const createSkill = async (
-  ownerId: string,
+  admin: { id: string; role: Role },
   payload: ISkillCreatePayload,
   file?: Express.Multer.File
 ) => {
+  if (admin.role !== Role.ADMIN) {
+    throw new Error("Only admin can create skills");
+  }
+
   let imageUrl: string | undefined;
 
   if (file) {
@@ -28,8 +33,9 @@ const createSkill = async (
       pricePerHour: payload.pricePerHour ?? null,
       tags: payload.tags ?? [],
       isPublished: payload.isPublished ?? true,
-      owner: { connect: { id: ownerId } },
-      // if you have image field on Skill, adjust accordingly:
+      isCustom: false,          // always false for admin
+      createdBy: null,          // admin-created skill
+      ownerId: admin.id,        // admin is the owner in this context
       ...(imageUrl ? { imageUrl } : {}),
     },
   });
@@ -37,7 +43,10 @@ const createSkill = async (
   return created;
 };
 
-// Get all skills with search, filters, pagination
+// ===============================
+// Get All Skills
+// Search + Filters + Pagination
+// ===============================
 const getAllSkills = async (params: any, options: IOptions) => {
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
@@ -46,20 +55,13 @@ const getAllSkills = async (params: any, options: IOptions) => {
   const andConditions: Prisma.SkillWhereInput[] = [];
 
   if (searchTerm) {
-    const searchConditions = skillSearchableFields.map((field) => {
-      const [relation, key] = field.split(".");
-      return relation
-        ? {
-            [relation]: {
-              [key]: { contains: searchTerm, mode: "insensitive" },
-            },
-          }
-        : { [field]: { contains: searchTerm, mode: "insensitive" } };
+    andConditions.push({
+      OR: skillSearchableFields.map((field) => ({
+        [field]: { contains: searchTerm, mode: "insensitive" },
+      })),
     });
-    andConditions.push({ OR: searchConditions });
   }
 
-  // numeric filters
   if (priceMin) {
     andConditions.push({ pricePerHour: { gte: Number(priceMin) } });
   }
@@ -67,20 +69,13 @@ const getAllSkills = async (params: any, options: IOptions) => {
     andConditions.push({ pricePerHour: { lte: Number(priceMax) } });
   }
 
-  if (Object.keys(filters).length > 0) {
-    Object.entries(filters).forEach(([key, value]) => {
-      if (skillFilterableFields.includes(key)) {
-        // simple mapping; ownerId is not a relation object name in prisma but a field
-        if (key === "ownerId") {
-          andConditions.push({ ownerId: String(value) as any });
-        } else {
-          andConditions.push({ [key]: value } as any);
-        }
-      }
-    });
-  }
+  Object.entries(filters).forEach(([key, value]) => {
+    if (skillFilterableFields.includes(key)) {
+      andConditions.push({ [key]: value } as any);
+    }
+  });
 
-  const whereConditions: Prisma.SkillWhereInput =
+  const whereConditions =
     andConditions.length > 0 ? { AND: andConditions } : {};
 
   const data = await prisma.skill.findMany({
@@ -88,16 +83,6 @@ const getAllSkills = async (params: any, options: IOptions) => {
     skip,
     take: limit,
     orderBy: { [sortBy]: sortOrder },
-    include: {
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profile: { select: { avatarUrl: true } },
-        },
-      },
-    },
   });
 
   const total = await prisma.skill.count({ where: whereConditions });
@@ -105,36 +90,27 @@ const getAllSkills = async (params: any, options: IOptions) => {
   return { meta: { page, limit, total }, data };
 };
 
-// Get single skill by id
+// ===============================
+// Get Single Skill
+// ===============================
 const getSkillById = async (id: string) => {
-  return prisma.skill.findUnique({
-    where: { id },
-    include: {
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profile: { select: { avatarUrl: true } },
-        },
-      },
-    },
-  });
+  return prisma.skill.findUnique({ where: { id } });
 };
 
-// Update skill (only owner or admin)
+// ===============================
+// Update Skill (Admin only)
+// ===============================
 const updateSkill = async (
   skillId: string,
   payload: ISkillUpdatePayload,
-  requester: { id: string; role: Role }
+  admin: { id: string; role: Role }
 ) => {
+  if (admin.role !== Role.ADMIN) {
+    throw new Error("Only admin can update skills");
+  }
+
   const skill = await prisma.skill.findUnique({ where: { id: skillId } });
   if (!skill) throw new Error("Skill not found");
-
-  // RBAC: only owner or admin can update
-  if (requester.role !== Role.ADMIN && skill.ownerId !== requester.id) {
-    throw new Error("Unauthorized");
-  }
 
   let imageUrl: string | undefined;
   if ((payload as any).file) {
@@ -144,37 +120,32 @@ const updateSkill = async (
     imageUrl = uploaded?.secure_url;
   }
 
-  const updateData: any = {};
-  if (payload.title !== undefined) updateData.title = payload.title;
-  if (payload.category !== undefined) updateData.category = payload.category;
-  if (payload.description !== undefined)
-    updateData.description = payload.description;
-  if (payload.level !== undefined) updateData.level = payload.level;
-  if (payload.pricePerHour !== undefined)
-    updateData.pricePerHour = payload.pricePerHour;
-  if (payload.tags !== undefined) updateData.tags = payload.tags;
-  if (payload.isPublished !== undefined)
-    updateData.isPublished = payload.isPublished;
-  if (imageUrl) updateData.imageUrl = imageUrl;
-
   const updated = await prisma.skill.update({
     where: { id: skillId },
-    data: updateData,
+    data: {
+      title: payload.title ?? skill.title,
+      category: payload.category ?? skill.category,
+      description: payload.description ?? skill.description,
+      level: payload.level ?? skill.level,
+      pricePerHour: payload.pricePerHour ?? skill.pricePerHour,
+      tags: payload.tags ?? skill.tags,
+      isPublished:
+        payload.isPublished !== undefined
+          ? payload.isPublished
+          : skill.isPublished,
+      ...(imageUrl ? { imageUrl } : {}),
+    },
   });
 
   return updated;
 };
 
-// Delete skill (only owner or admin)
-const deleteSkill = async (
-  skillId: string,
-  requester: { id: string; role: Role }
-) => {
-  const skill = await prisma.skill.findUnique({ where: { id: skillId } });
-  if (!skill) throw new Error("Skill not found");
-
-  if (requester.role !== Role.ADMIN && skill.ownerId !== requester.id) {
-    throw new Error("Unauthorized");
+// ===============================
+// Delete Skill (Admin only)
+// ===============================
+const deleteSkill = async (skillId: string, admin: { id: string; role: Role }) => {
+  if (admin.role !== Role.ADMIN) {
+    throw new Error("Only admin can delete skills");
   }
 
   return prisma.skill.delete({ where: { id: skillId } });

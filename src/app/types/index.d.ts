@@ -1,5 +1,3 @@
-import { Role } from "@prisma/client";
-
 declare global {
   namespace Express {
     interface UserPayload {
@@ -13,5 +11,4 @@ declare global {
     }
   }
 }
-
 export {};

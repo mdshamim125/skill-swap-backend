@@ -2,7 +2,7 @@ model User {
   id             String     @id @default(uuid())
   email          String     @unique
   password       String
-  name           String     
+  name           String
   avatar         String?
   role           Role       @default(USER)
   status         UserStatus @default(ACTIVE)
@@ -14,7 +14,7 @@ model User {
   updatedAt      DateTime   @updatedAt
 
   profile         Profile?
-  skillsOffered   Skill[]   @relation("OfferedSkills")
+  offeredSkills   Skill[]   @relation("UserOfferedSkills")
   bookingsMade    Booking[] @relation("BookingsMade")
   bookingsHosted  Booking[] @relation("BookingsHosted")
   reviewsGiven    Review[]  @relation("ReviewsGiven")

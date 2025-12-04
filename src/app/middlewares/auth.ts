@@ -6,30 +6,8 @@ import config from "../../config";
 import { Secret } from "jsonwebtoken";
 import { Role } from "@prisma/client";
 
-// ===============================
-// Define Type for JWT Payload
-// ===============================
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-}
-
-export interface AuthenticatedRequest extends Request {
-  user: AuthUser;
-}
-
-// ===============================
-// Auth Middleware with RBAC
-// ===============================
-const auth = (...roles: string[]) => {
-  return async (
-    req: Request & { user?: AuthUser },
-    res: Response,
-    next: NextFunction
-  ) => {
+const auth = (...roles: Role[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const token = req.cookies?.accessToken;
 
@@ -40,11 +18,10 @@ const auth = (...roles: string[]) => {
         );
       }
 
-      // Verify user from JWT
       const decoded = jwtHelper.verifyToken(
         token,
         config.jwt.jwt_secret as Secret
-      ) as AuthUser;
+      ) as Express.UserPayload;
 
       if (!decoded) {
         throw new ApiError(
@@ -56,7 +33,7 @@ const auth = (...roles: string[]) => {
       req.user = decoded;
 
       // Role validation
-      if (roles.length > 0 && !roles.includes(decoded.role)) {
+      if (roles.length > 0 && !roles.includes(decoded.role as Role)) {
         throw new ApiError(
           httpStatus.FORBIDDEN,
           "Forbidden! Insufficient permissions."

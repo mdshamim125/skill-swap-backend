@@ -1,18 +1,20 @@
 model Profile {
   id           String   @id @default(uuid())
   userId       String   @unique
-  bio          String?
+  bio          String
   avatarUrl    String?
   interests    String[] @default([])
   languages    String[] @default([])
-  skills       String[] @default([])
-  expertise    String?
-  travelStyles String[] @default([])
-  country      String?
-  city         String?
-  experience   String?
-  hourlyRate   Int?
+  expertise    SkillLevel @default(BEGINNER)
+  experience   Int?
+  country      String
+  city         String
+  hourlyRate   Int
   phone        String?
+
+  // Skills chosen from admin-created skill list
+  skills       Skill[]  @relation("ProfileSkills")
+
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

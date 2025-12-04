@@ -7,6 +7,8 @@ import { createUserSchemaValidation } from "./user.validation";
 
 const router = express.Router();
 
+router.get("/my-profile", auth(), UserController.getMyProfile);
+
 // ===============================
 // GET ALL USERS (Admin Only)
 // ===============================
@@ -32,17 +34,43 @@ router.post(
 );
 
 // ===============================
-// UPDATE USER PROFILE (Self or Admin)
+// UPDATE USER PROFILE
 // ===============================
-router.patch(
-  "/:id",
-  auth(),
-  fileUploader.upload.single("file"),
-  (req: Request, res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data || JSON.stringify(req.body));
-    return UserController.updateUser(req, res, next);
+// router.patch(
+//   "/",
+//   auth(),
+//   // fileUploader.upload.single("file"),
+//   (req: Request, res: Response, next: NextFunction) => {
+//     req.body = JSON.parse(req.body.payload || "{}");
+//     return UserController.updateUser(req, res, next);
+//   }
+// );
+
+router.patch("/", auth(), (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // If frontend sent JSON normally
+    if (req.is("application/json")) {
+      return UserController.updateUser(req, res, next);
+    }
+
+    // If frontend sent FormData (multipart)
+    if (typeof req.body.payload === "string") {
+      req.body = JSON.parse(req.body.payload);
+      return UserController.updateUser(req, res, next);
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "Invalid update payload",
+    });
+  } catch (err) {
+    console.error("PATCH /user parse error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server parse error",
+    });
   }
-);
+});
 
 // ===============================
 // UPDATE USER ROLE (Admin Only)

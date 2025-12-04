@@ -129,7 +129,7 @@ const createBooking = async (menteeId: string, data: any) => {
     throw new Error("You cannot book yourself");
   }
 
-  const mentor = skill.owner;
+  const mentor = skill.owner!;
 
   const mentorPremiumValid =
     mentor.isPremium &&

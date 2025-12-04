@@ -158,54 +158,39 @@ const getById = async (id: string, requester: { id: string; role: Role }) => {
 // ===============================
 // UPDATE USER PROFILE (with RBAC)
 // ===============================
-const updateUser = async (
-  targetUserId: string,
-  payload: any,
-  requester: { id: string; role: Role }
-) => {
-  // Only admin or owner can update
-  if (requester.role !== Role.ADMIN && requester.id !== targetUserId) {
-    throw new Error("Unauthorized");
-  }
+const updateUser = async (req: Request) => {
+  const userId = req.user?.id;
+  if (!userId) throw new Error("Unauthorized or missing user ID");
 
-  let avatarUrl: string | undefined;
+  const profileData = req.body;
 
-  if (payload.file) {
-    const uploaded = await fileUploader.uploadToCloudinary(payload.file);
-    avatarUrl = uploaded?.secure_url;
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
-    if (payload.email || payload.password) {
-      const updateData: any = {};
-      if (payload.email) updateData.email = payload.email.trim();
-      if (payload.password)
-        updateData.password = await bcrypt.hash(payload.password, 10);
-
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: updateData,
-      });
-    }
-
-    const { email, password, file, ...profileData } = payload;
-
-    // Optional validation for numeric fields
+  return await prisma.$transaction(async (tx) => {
+    // Negative hourly rate protection
     if (profileData.hourlyRate && profileData.hourlyRate < 0)
       throw new Error("Hourly rate cannot be negative");
 
-    await tx.profile.update({
-      where: { userId: targetUserId },
+    return await tx.profile.update({
+      where: { userId },
       data: {
-        ...profileData,
-        avatarUrl: avatarUrl ?? profileData.avatarUrl,
+        bio: profileData.bio,
+        country: profileData.country,
+        city: profileData.city,
+        phone: profileData.phone,
+        hourlyRate: profileData.hourlyRate,
+        interests: profileData.interests,
+        languages: profileData.languages,
+
+        skills: profileData.skills?.length
+          ? ({
+              set: [],
+              connect: profileData.skills.map((id: string) => ({ id })),
+            } as any)
+          : ({ set: [] } as any),
+
+        avatarUrl: profileData.avatarUrl ?? undefined,
       },
     });
-
-    return true;
   });
-
-  return result;
 };
 
 // ===============================

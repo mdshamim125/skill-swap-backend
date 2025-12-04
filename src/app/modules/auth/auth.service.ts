@@ -87,14 +87,9 @@ const getMe = async (session: any) => {
     },
   });
 
-  const { id, email, role, status } = userData;
+  // const { id, email, role, status } = userData;
 
-  return {
-    id,
-    email,
-    role,
-    status,
-  };
+  return userData;
 };
 
 export const AuthService = {
