@@ -36,17 +36,14 @@ const createUser = async (req: Request, role: Role) => {
     await tx.profile.create({
       data: {
         userId: createdUser.id,
-        bio: req.body.bio,
-        avatarUrl,
+        bio: req.body.bio ?? "",
+        avatarUrl: avatarUrl ?? "",
         interests: req.body.interests ?? [],
         languages: req.body.languages ?? [],
-        skills: req.body.skills ?? [],
-        expertise: req.body.expertise,
-        country: req.body.country,
-        city: req.body.city,
-        experience: req.body.experience,
-        hourlyRate: req.body.hourlyRate,
-        phone: req.body.phone,
+        country: req.body.country ?? "",
+        city: req.body.city ?? "",
+        hourlyRate: req.body.hourlyRate ?? 0,
+        phone: req.body.phone ?? "",
       },
     });
 

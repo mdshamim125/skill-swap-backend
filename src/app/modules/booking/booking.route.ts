@@ -23,7 +23,7 @@ router.post(
 // GET BOOKINGS (As Mentee)
 // ===============================
 router.get(
-  "/me",
+  "/my-bookings",
   auth(Role.USER, Role.PREMIUM_USER),
   BookingController.getMyBookings
 );
