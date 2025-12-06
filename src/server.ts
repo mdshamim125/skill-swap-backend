@@ -2,6 +2,7 @@ import { Server } from "http";
 import app from "./app";
 import config from "./config";
 import { initSocket } from "./app/socket";
+import "./app/jobs/subscriptionCron"; // must be imported before app.listen
 
 async function bootstrap() {
   // This variable will hold our server instance

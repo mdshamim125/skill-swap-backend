@@ -1,0 +1,8 @@
+model SystemSetting {
+  id          String @id @default(uuid())
+  key         String @unique
+  value       String
+  description String?
+  freeBookings   Int      @default(3)
+
+}

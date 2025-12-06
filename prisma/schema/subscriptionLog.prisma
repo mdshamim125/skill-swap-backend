@@ -1,0 +1,13 @@
+model SubscriptionLog {
+  id              String   @id @default(uuid())
+  userId          String
+  subscriptionId  String
+  action          String
+  timestamp       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
+}

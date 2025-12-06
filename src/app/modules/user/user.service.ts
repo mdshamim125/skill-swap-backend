@@ -9,9 +9,13 @@ import { userSearchableFields, userFilterableFields } from "./user.constant";
 // ===============================
 // CREATE USER (any role)
 // ===============================
+// ===============================
+// CREATE USER (any role)
+// ===============================
 const createUser = async (req: Request, role: Role) => {
   let avatarUrl: string | undefined;
 
+  // Upload avatar if provided
   if (req.file) {
     const uploaded = await fileUploader.uploadToCloudinary(req.file);
     avatarUrl = uploaded?.secure_url;
@@ -20,6 +24,11 @@ const createUser = async (req: Request, role: Role) => {
   const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
   const result = await prisma.$transaction(async (tx) => {
+    // Get default free bookings from system settings
+    const settings = await tx.systemSetting.findFirst();
+    const defaultFreeBookings = settings?.freeBookings ?? 3;
+
+    // Create User
     const createdUser = await tx.user.create({
       data: {
         email: req.body.email,
@@ -27,12 +36,14 @@ const createUser = async (req: Request, role: Role) => {
         role,
         name: req.body.name,
         avatar: avatarUrl,
-        isVerified: req.body.isVerified || false,
-        isPremium: req.body.isPremium || false,
-        premiumExpires: req.body.premiumExpires,
+        isVerified: false, // user is not verified on registration
+        freeBookingsLeft: role === "USER" ? defaultFreeBookings : 0, // mentor gets 0 free bookings
+
+        // Remove isPremium & premiumExpires (managed by subscription system)
       },
     });
 
+    // Create Profile
     await tx.profile.create({
       data: {
         userId: createdUser.id,
@@ -42,14 +53,15 @@ const createUser = async (req: Request, role: Role) => {
         languages: req.body.languages ?? [],
         country: req.body.country ?? "",
         city: req.body.city ?? "",
-        hourlyRate: req.body.hourlyRate ?? 0,
+        hourlyRate: role === "MENTOR" ? req.body.hourlyRate ?? 0 : 0, // only mentor has hourlyRate
         phone: req.body.phone ?? "",
       },
     });
 
+    // Return user without password
     return {
       ...createdUser,
-      password: undefined, // hide password
+      password: undefined,
     };
   });
 

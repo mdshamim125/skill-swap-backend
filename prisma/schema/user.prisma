@@ -28,6 +28,8 @@ model User {
 
   payments      Payment[]
   subscriptions Subscription[]
+  subscriptionLogs SubscriptionLog[]   // 👈 ADD THIS
+  freeBookingsLeft Int      @default(0)
   notifications Notification[]
 
   @@index([email])
