@@ -1,65 +1,99 @@
+// src/app/modules/chat/chat.service.ts
 import { prisma } from "../../shared/prisma";
 
-const getRoomId = (a: string, b: string) => {
-  return [a, b].sort().join("_"); // unique & predictable
-};
+export const chatService = {
+  // -----------------------------
+  // Create or return existing conversation
+  // -----------------------------
+  async createOrGetConversation(userAId: string, userBId: string) {
+    const existing = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { userAId, userBId },
+          { userAId: userBId, userBId: userAId },
+        ],
+      },
+      include: {
+        userA: { select: { id: true, name: true, avatar: true, role: true } },
+        userB: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
 
-const getOrCreateConversation = async (userAId: string, userBId: string) => {
-  const existing = await prisma.conversation.findFirst({
-    where: {
-      OR: [
-        { userAId, userBId },
-        { userAId: userBId, userBId: userAId },
-      ],
-    },
-  });
+    if (existing) return existing;
 
-  if (existing) return existing;
+    // Create new conversation
+    return prisma.conversation.create({
+      data: { userAId, userBId },
+      include: {
+        userA: { select: { id: true, name: true, avatar: true, role: true } },
+        userB: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
+  },
 
-  return prisma.conversation.create({
-    data: { userAId, userBId },
-  });
-};
+  // -----------------------------
+  // Get logged-in user's conversations
+  // -----------------------------
+  async getUserConversations(userId: string) {
+    const conversations = await prisma.conversation.findMany({
+      where: { OR: [{ userAId: userId }, { userBId: userId }] },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        userA: { select: { id: true, name: true, avatar: true, role: true } },
+        userB: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
 
-const saveMessage = async ({
-  senderId,
-  receiverId,
-  text,
-}: {
-  senderId: string;
-  receiverId: string;
-  text: string;
-}) => {
-  const conv = await getOrCreateConversation(senderId, receiverId);
+    return conversations.map((c) => ({
+      ...c,
+      otherUser: c.userA.id === userId ? c.userB : c.userA,
+    }));
+  },
 
-  const message = await prisma.message.create({
-    data: {
-      senderId,
-      receiverId,
-      text,
-      conversationId: conv.id,
-    },
-    include: {
-      conversation: false,
-    },
-  });
+  // -----------------------------
+  // Get messages inside conversation
+  // -----------------------------
+  async getConversationMessages(conversationId: string, take = 50, skip = 0) {
+    return prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
+      take,
+      skip,
+      include: {
+        sender: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
+  },
 
-  return message;
-};
+  // -----------------------------
+  // Create message in conversation
+  // -----------------------------
+  async createMessage(userAId: string, userBId: string, text: string) {
+    // Ensure conversation exists
+    const conv = await this.createOrGetConversation(userAId, userBId);
 
-const getMessages = async (user1: string, user2: string) => {
-  const conv = await getOrCreateConversation(user1, user2);
+    const message = await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        senderId: userAId,
+        receiverId: conv.userAId === userAId ? conv.userBId : conv.userAId,
+        text,
+      },
+      include: {
+        sender: { select: { id: true, name: true, avatar: true, role: true } },
+      },
+    });
 
-  return prisma.message.findMany({
-    where: {
-      conversationId: conv.id,
-    },
-    orderBy: { createdAt: "asc" },
-  });
-};
+    // Update conversation timestamp
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: { updatedAt: new Date() },
+    });
 
-export default {
-  getRoomId,
-  saveMessage,
-  getMessages,
+    return message;
+  },
 };

@@ -1,10 +1,10 @@
 export const userSearchableFields = [
-  "email",
+  "name",
   "profile.bio",
   "profile.city",
   "profile.country",
   "profile.interests",
-  "profile.languages"
+  "profile.languages",
 ];
 
 export const userFilterableFields = [
@@ -14,5 +14,5 @@ export const userFilterableFields = [
   "profile.country",
   "profile.languages",
   "profile.interests",
-  "email"
+  "email",
 ];

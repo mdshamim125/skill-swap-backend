@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../../shared/prisma";
 import { fileUploader } from "../../helper/fileUploader";
 import { IOptions, paginationHelper } from "../../helper/paginationHelper";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma, Role, UserStatus } from "@prisma/client";
 import { userSearchableFields, userFilterableFields } from "./user.constant";
 
 // ===============================
@@ -70,59 +70,119 @@ const createUser = async (req: Request, role: Role) => {
 
 // ===============================
 // GET ALL USERS
-// Admin: can see all
-// User: only see themselves
-// ===============================
-const getAllFromDB = async (
+// export const getAllFromDB = async (
+//   params: any,
+//   options: any,
+//   requester: { id: string; role: Role }
+// ) => {
+//   const { page, limit, skip, sortBy, sortOrder } =
+//     paginationHelper.calculatePagination(options);
+
+//   const { searchTerm, ...filters } = params;
+
+//   const andConditions: Prisma.UserWhereInput[] = [];
+
+//   // Search
+//   if (searchTerm) {
+//     const searchConditions = ["name", "email"].map((field) => ({
+//       [field]: { contains: searchTerm, mode: "insensitive" },
+//     }));
+//     andConditions.push({ OR: searchConditions });
+//   }
+
+//   // Filters
+//   if (Object.keys(filters).length > 0) {
+//     Object.entries(filters).forEach(([key, value]) => {
+//       andConditions.push({ [key]: value });
+//     });
+//   }
+
+//   // RBAC: control who can see whom
+//   if (requester.role === Role.USER) {
+//     // Users see only active mentors
+//     andConditions.push({
+//       role: Role.MENTOR,
+//       isPremium: true,
+//       premiumExpires: { gt: new Date() },
+//     });
+//   } else if (requester.role === Role.MENTOR) {
+//     // Mentors see users + admins (exclude self)
+//     andConditions.push({
+//       OR: [{ role: Role.USER }, { role: Role.ADMIN }],
+//     });
+//   } // Admins can see everyone, no extra filter
+
+//   const whereConditions: Prisma.UserWhereInput =
+//     andConditions.length > 0 ? { AND: andConditions } : {};
+
+//   const users = await prisma.user.findMany({
+//     skip,
+//     take: limit,
+//     where: whereConditions,
+//     orderBy: { [sortBy]: sortOrder },
+//     include: { profile: true },
+//   });
+
+//   const total = await prisma.user.count({ where: whereConditions });
+
+//   // Remove password
+//   const safeUsers = users.map(({ password, ...rest }) => rest);
+
+//   return { meta: { page, limit, total }, data: safeUsers };
+// };
+
+export const getAllFromDB = async (
   params: any,
-  options: IOptions,
+  options: any,
   requester: { id: string; role: Role }
 ) => {
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
-  const { searchTerm, ...filters } = params;
+  const { searchTerm, role, premium, status, ...filters } = params;
 
   const andConditions: Prisma.UserWhereInput[] = [];
 
+  // Search
   if (searchTerm) {
-    const searchConditions = userSearchableFields.map((field) => {
-      const [relation, key] = field.split(".");
-      return relation
-        ? {
-            [relation]: {
-              [key]: { contains: searchTerm, mode: "insensitive" },
-            },
-          }
-        : { [field]: { contains: searchTerm, mode: "insensitive" } };
-    });
+    const searchConditions = userSearchableFields.map((field) => ({
+      [field]: { contains: searchTerm, mode: "insensitive" },
+    }));
     andConditions.push({ OR: searchConditions });
   }
 
-  if (Object.keys(filters).length > 0) {
-    Object.entries(filters).forEach(([key, value]) => {
-      if (userFilterableFields.includes(key)) {
-        const [relation, field] = key.split(".");
-        if (relation) {
-          andConditions.push({ [relation]: { [field]: value } });
-        } else {
-          andConditions.push({ [key]: value });
-        }
-      }
-    });
+  // Role filter (only if valid enum)
+  if (role && role !== "") {
+    andConditions.push({ role: role as Role });
   }
 
-  // RBAC: normal users can only see themselves and active mentors
-  if (requester.role !== Role.ADMIN) {
+  // Premium filter
+  if (premium && premium !== "") {
+    andConditions.push({ isPremium: premium === "true" });
+  }
+
+  // Status filter
+  if (status && status !== "") {
+    andConditions.push({ status: status as UserStatus });
+  }
+
+  // Other filters
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      andConditions.push({ [key]: value });
+    }
+  });
+
+  // RBAC - restrict visible users
+  if (requester.role === Role.USER) {
     andConditions.push({
-      OR: [
-        { id: requester.id }, // always show self
-        {
-          role: Role.MENTOR,
-          isPremium: true,
-          premiumExpires: { gt: new Date() }, // only active premium mentors
-        },
-      ],
+      role: Role.MENTOR,
+      isPremium: true,
+      premiumExpires: { gt: new Date() },
+    });
+  } else if (requester.role === Role.MENTOR) {
+    andConditions.push({
+      OR: [{ role: Role.USER }, { role: Role.ADMIN }],
     });
   }
 
@@ -139,7 +199,7 @@ const getAllFromDB = async (
 
   const total = await prisma.user.count({ where: whereConditions });
 
-  // remove password before returning
+  // Remove passwords
   const safeUsers = users.map(({ password, ...rest }) => rest);
 
   return { meta: { page, limit, total }, data: safeUsers };
@@ -238,6 +298,34 @@ const updateUserRole = async (
   return updatedUser;
 };
 
+// ===============================
+// GET TOP RATED MENTORS
+// ===============================
+const getTopRatedMentors = async () => {
+  const mentors = await prisma.user.findMany({
+    where: {
+      role: "MENTOR", // Must be mentor
+      isPremium: true, // Must be premium mentor
+      premiumExpires: { gt: new Date() }, // Premium must still be active
+      averageRating: { gte: 0 }, // Has rating
+    },
+
+    orderBy: [
+      { averageRating: "desc" }, // Sort by rating first
+      { reviewsReceived: { _count: "desc" } }, // Then by number of reviews
+    ],
+
+    take: 6, // Top 6 premium mentors
+
+    include: {
+      profile: { include: { skills: true } },
+      reviewsReceived: true,
+    },
+  });
+
+  return mentors.map(({ password, ...safe }) => safe);
+};
+
 export const UserService = {
   createUser,
   getAllFromDB,
@@ -245,4 +333,5 @@ export const UserService = {
   updateUser,
   deleteUser,
   updateUserRole,
+  getTopRatedMentors,
 };

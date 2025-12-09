@@ -1,9 +1,15 @@
+// src/app/modules/chat/chat.route.ts
 import express from "express";
-import { ChatController } from "./chatting.controller";
 import auth from "../../middlewares/auth";
+import { chatController } from "./chatting.controller";
 
 const router = express.Router();
 
-router.get("/:otherUserId", auth(), ChatController.getMessages);
+router.post("/create", auth(), chatController.createConversation);
+router.get("/my-conversations", auth(), chatController.getConversations);
+router.get("/:conversationId", auth(), chatController.getMessages);
+router.post("/messages/send", auth(), chatController.sendMessage);
+router.post("/:conversationId/join", auth(), chatController.joinConversation);
 
-export const ChatRoutes = router;
+
+export const chatRoute = router;

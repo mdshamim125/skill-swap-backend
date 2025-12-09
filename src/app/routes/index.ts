@@ -4,10 +4,10 @@ import { authRoutes } from "../modules/auth/auth.routes";
 import { skillRoutes } from "../modules/skill/skill.route";
 import { bookingRoutes } from "../modules/booking/booking.route";
 import { mentorRoutes } from "../modules/user/mentor/mentor.route";
-import { ChatRoutes } from "../modules/chatting/chatting.route";
 import { ReviewRoutes } from "../modules/review/review.routes";
 import { DashboardRoutes } from "../modules/dashboard/dashboard.route";
 import { subscriptionRoute } from "../modules/subscription/subscription.route";
+import { chatRoute } from "../modules/chatting/chatting.route";
 
 const router = express.Router();
 
@@ -38,7 +38,7 @@ const moduleRoutes = [
   },
   {
     path: "/chat",
-    route: ChatRoutes,
+    route: chatRoute,
   },
   {
     path: "/reviews",

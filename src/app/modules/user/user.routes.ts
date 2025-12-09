@@ -10,9 +10,19 @@ const router = express.Router();
 router.get("/my-profile", auth(), UserController.getMyProfile);
 
 // ===============================
+// TOP RATED MENTORS
+// Public Route
+// ===============================
+router.get("/top-rated-mentors", UserController.getTopRatedMentors);
+
+// ===============================
 // GET ALL USERS (Admin Only)
 // ===============================
-router.get("/", auth(Role.ADMIN), UserController.getAllUsers);
+router.get(
+  "/",
+  auth(Role.USER, Role.MENTOR, Role.ADMIN),
+  UserController.getAllUsers
+);
 
 // ===============================
 // GET SINGLE USER (Admin or Self)
@@ -26,7 +36,6 @@ router.post(
   "/create",
   // fileUploader.upload.single("file"),
   (req: Request, res: Response, next: NextFunction) => {
-    // Parse and validate user input
     const parsed = createUserSchemaValidation.parse(req.body);
     req.body = parsed;
     return UserController.createUser(req, res, next);
@@ -36,24 +45,12 @@ router.post(
 // ===============================
 // UPDATE USER PROFILE
 // ===============================
-// router.patch(
-//   "/",
-//   auth(),
-//   // fileUploader.upload.single("file"),
-//   (req: Request, res: Response, next: NextFunction) => {
-//     req.body = JSON.parse(req.body.payload || "{}");
-//     return UserController.updateUser(req, res, next);
-//   }
-// );
-
 router.patch("/", auth(), (req: Request, res: Response, next: NextFunction) => {
   try {
-    // If frontend sent JSON normally
     if (req.is("application/json")) {
       return UserController.updateUser(req, res, next);
     }
 
-    // If frontend sent FormData (multipart)
     if (typeof req.body.payload === "string") {
       req.body = JSON.parse(req.body.payload);
       return UserController.updateUser(req, res, next);

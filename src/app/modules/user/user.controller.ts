@@ -120,7 +120,6 @@ const updateUserRole = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 // ===============================
 // GET MY PROFILE
 // ===============================
@@ -161,6 +160,22 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// ===============================
+// GET TOP RATED MENTORS
+// ===============================
+// user.controller.ts
+const getTopRatedMentors = catchAsync(async (req: Request, res: Response) => {
+  const mentors = await UserService.getTopRatedMentors();
+  console.log(mentors);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Top rated mentors retrieved successfully!",
+    data: mentors,
+  });
+});
+
 export const UserController = {
   createUser,
   getAllUsers,
@@ -168,5 +183,6 @@ export const UserController = {
   updateUser,
   deleteUser,
   updateUserRole,
-  getMyProfile
+  getMyProfile,
+  getTopRatedMentors,
 };

@@ -7,6 +7,138 @@ interface MentorSearchParams {
   category?: string;
 }
 
+// export const getActiveMentors = async (
+//   params: MentorSearchParams,
+//   options: IOptions
+// ) => {
+//   const { page, limit, skip, sortBy, sortOrder } =
+//     paginationHelper.calculatePagination(options);
+
+//   const { searchTerm, skills, category } = params;
+
+//   const andConditions: any[] = [];
+
+//   // --------------------------------------
+//   // 🔍 SEARCH (Name + Profile.bio + Profile.expertise + OfferedSkills.title)
+//   // --------------------------------------
+//   if (searchTerm && searchTerm.trim() !== "") {
+//     const keyword = searchTerm.trim();
+
+//     andConditions.push({
+//       OR: [
+//         // USER NAME SEARCH
+//         { name: { contains: keyword, mode: "insensitive" } },
+
+//         // PROFILE BIO SEARCH
+//         {
+//           profile: {
+//             bio: { contains: keyword, mode: "insensitive" },
+//           },
+//         },
+
+//         // PROFILE EXPERTISE SEARCH (BEGINNER, INTERMEDIATE, ADVANCED)
+//         // user types: "advanced" -> matches enum
+//         {
+//           profile: {
+//             expertise: {
+//               equals: keyword.toUpperCase(), // convert user text → ENUM
+//             },
+//           },
+//         },
+
+//         // OFFERED SKILL TITLES SEARCH
+//         {
+//           offeredSkills: {
+//             some: {
+//               title: {
+//                 contains: keyword,
+//                 mode: "insensitive",
+//               },
+//             },
+//           },
+//         },
+//       ],
+//     });
+//   }
+
+//   // --------------------------------------
+//   // 🏷 CATEGORY FILTER
+//   // --------------------------------------
+//   if (category && category !== "all") {
+//     andConditions.push({
+//       offeredSkills: {
+//         some: {
+//           category,
+//         },
+//       },
+//     });
+//   }
+
+//   // --------------------------------------
+//   // 🧠 SKILLS FILTER
+//   // --------------------------------------
+//   if (skills && skills.length > 0 && !skills.includes("all")) {
+//     andConditions.push({
+//       offeredSkills: {
+//         some: {
+//           title: { in: skills },
+//         },
+//       },
+//     });
+//   }
+
+//   // --------------------------------------
+//   // 🎖 PREMIUM MENTORS ONLY
+//   // --------------------------------------
+//   andConditions.push({
+//     role: "MENTOR",
+//     isPremium: true,
+//     premiumExpires: { gt: new Date() },
+//   });
+
+//   // --------------------------------------
+//   // 📌 MUST HAVE PUBLISHED SKILLS
+//   // --------------------------------------
+//   // andConditions.push({
+//   //   offeredSkills: {
+//   //     some: {
+//   //       isPublished: true,
+//   //     },
+//   //   },
+//   // });
+
+//   // --------------------------------------
+//   // WHERE FINAL
+//   // --------------------------------------
+//   const whereConditions = { AND: andConditions };
+
+//   // --------------------------------------
+//   // 📌 MAIN QUERY
+//   // --------------------------------------
+//   const mentors = await prisma.user.findMany({
+//     where: whereConditions,
+
+//     include: {
+//       profile: { include: { skills: true } },
+//       offeredSkills: true,
+//     },
+
+//     skip,
+//     take: limit,
+
+//     orderBy: {
+//       [sortBy || "createdAt"]: sortOrder || "desc",
+//     },
+//   });
+
+//   const total = await prisma.user.count({ where: whereConditions });
+
+//   return {
+//     meta: { page, limit, total },
+//     data: mentors,
+//   };
+// };
+
 export const getActiveMentors = async (
   params: MentorSearchParams,
   options: IOptions
@@ -14,69 +146,111 @@ export const getActiveMentors = async (
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
-  const { searchTerm, skills, category } = params;
+  const {  skills, category } = params;
+  const searchTerm = params.searchTerm || "";
+
 
   const andConditions: any[] = [];
 
-  // Search by name or profile.expertise
-  if (searchTerm) {
+  // ----------------------------
+  // 🔍 SEARCH (Name + Bio + Expertise + Profile Skills)
+  // ----------------------------
+  if (searchTerm?.trim()) {
+    const keyword = searchTerm.trim();
+
     andConditions.push({
       OR: [
-        { name: { contains: searchTerm, mode: "insensitive" } },
+        { name: { contains: keyword, mode: "insensitive" } },
+
+        { profile: { bio: { contains: keyword, mode: "insensitive" } } },
+
         {
-          profile: { expertise: { contains: searchTerm, mode: "insensitive" } },
+          profile: {
+            expertise: {
+              contains: keyword, // "begin" matches "BEGINNER"
+              mode: "insensitive",
+            },
+          },
+        },
+
+        {
+          profile: {
+            skills: {
+              some: {
+                title: { contains: keyword, mode: "insensitive" },
+              },
+            },
+          },
         },
       ],
     });
   }
 
-  // Category filter
-  if (category) {
+  // ----------------------------
+  // 🏷 CATEGORY FILTER
+  // ----------------------------
+  if (category && category !== "all") {
     andConditions.push({
-      offeredSkills: { some: { category } },
+      profile: {
+        skills: {
+          some: { category },
+        },
+      },
     });
   }
 
-  // Skills filter
-  if (skills && skills.length > 0) {
+  // ----------------------------
+  // 🎯 SKILL FILTER
+  // ----------------------------
+  if (skills && skills.length > 0 && !skills.includes("all")) {
     andConditions.push({
-      offeredSkills: { some: { tags: { hasSome: skills } } },
+      profile: {
+        skills: {
+          some: { title: { in: skills } },
+        },
+      },
     });
   }
 
-  // Premium active mentor filter
+  // ----------------------------
+  // 🟡 ONLY ACTIVE PREMIUM MENTORS
+  // ----------------------------
   andConditions.push({
     role: "MENTOR",
     isPremium: true,
     premiumExpires: { gt: new Date() },
   });
 
-  // Must have at least one published skill
-  andConditions.push({
-    offeredSkills: { some: { isPublished: true } },
-  });
-
   const whereConditions = { AND: andConditions };
 
-  // 🔥 Fetch mentors with profile.skills relation included
+  // ----------------------------
+  // 📌 MAIN QUERY
+  // ----------------------------
   const mentors = await prisma.user.findMany({
     where: whereConditions,
+
     include: {
       profile: {
         include: {
-          skills: true, // ⭐ Fetch skills linked to profile
+          skills: true,
         },
       },
-      offeredSkills: true, // keep your published skills list
     },
+
     skip,
     take: limit,
-    orderBy: { [sortBy || "createdAt"]: sortOrder || "desc" },
+
+    orderBy: {
+      [sortBy || "createdAt"]: sortOrder || "desc",
+    },
   });
 
   const total = await prisma.user.count({ where: whereConditions });
 
-  return { meta: { page, limit, total }, data: mentors };
+  return {
+    meta: { page, limit, total },
+    data: mentors,
+  };
 };
 
 export const getSingleActiveMentor = async (id: string) => {
@@ -85,9 +259,9 @@ export const getSingleActiveMentor = async (id: string) => {
     role: "MENTOR",
     isPremium: true,
     premiumExpires: { gt: new Date() },
-    offeredSkills: {
-      some: { isPublished: true },
-    },
+    // offeredSkills: {
+    //   some: { isPublished: true },
+    // },
   };
 
   const mentor = await prisma.user.findFirst({
