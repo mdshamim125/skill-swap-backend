@@ -9,15 +9,11 @@ const router = express.Router();
 // ===============================
 // CREATE BOOKING (Mentee Only)
 // ===============================
-router.post(
-  "/create",
-  auth(Role.USER, Role.PREMIUM_USER),
-  (req: Request, res: Response, next: NextFunction) => {
-    const parsed = BookingValidation.createBookingSchema.parse(req.body);
-    req.body = parsed;
-    return BookingController.createBooking(req, res);
-  }
-);
+router.post("/create", auth(Role.USER, Role.PREMIUM_USER), (req, res, next) => {
+  const parsed = BookingValidation.createBookingSchema.parse(req.body);
+  req.body = parsed;
+  return BookingController.createBooking(req, res);
+});
 
 // ===============================
 // GET BOOKINGS (As Mentee)

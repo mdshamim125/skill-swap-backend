@@ -8,57 +8,37 @@ const FREE_USER_BOOKING_LIMIT = 3;
 export const createBooking = async (menteeId: string, data: any) => {
   const { mentorId, skillId, scheduledAt, durationMin } = data;
 
-  // ----------------------------
-  // 1. Validate user from token
-  // ----------------------------
+  // 1. Validate mentee
   const user = await prisma.user.findUnique({
     where: { id: menteeId },
-    select: {
-      email: true,
-      isPremium: true,
-      premiumExpires: true,
-    },
+    select: { email: true, isPremium: true, premiumExpires: true },
   });
+  if (!user) throw new Error("Unauthorized user");
 
-  if (!user) {
-    throw new Error("Unauthorized user");
-  }
-
-  // Check premium validity
+  // check premium validity
   const isPremiumValid =
     user.isPremium &&
     user.premiumExpires &&
     new Date(user.premiumExpires) > new Date();
 
-  // ----------------------------
   // 2. Check free booking limit only if NOT premium
-  // ----------------------------
   let requiresPayment = false;
-
   if (!isPremiumValid) {
     const activeBookings = await prisma.booking.count({
-      where: {
-        menteeId,
-        status: { in: ["PENDING", "ACCEPTED"] },
-      },
+      where: { menteeId, status: { in: ["PENDING", "ACCEPTED"] } },
     });
-
     if (activeBookings >= FREE_USER_BOOKING_LIMIT) {
       requiresPayment = true;
     }
   }
 
-  // ----------------------------
   // 3. Fetch skill + mentor
-  // ----------------------------
   const skill = await prisma.skill.findUnique({
     where: { id: skillId },
     include: { owner: true },
   });
-
   if (!skill) throw new Error("Skill not found");
   if (skill.ownerId === menteeId) throw new Error("You cannot book yourself");
-
   const mentor = skill.owner!;
 
   // Mentor must have valid premium
@@ -66,156 +46,117 @@ export const createBooking = async (menteeId: string, data: any) => {
     mentor.isPremium &&
     mentor.premiumExpires &&
     new Date(mentor.premiumExpires) > new Date();
-
   if (!mentorPremiumValid) {
     throw new Error("This mentor's premium has expired.");
   }
 
-  // ----------------------------
-  // 4. Price calculation
-  // ----------------------------
+  // 4. Price calc
   const hourlyRate = skill.pricePerHour ?? 200;
   const price = Math.round((hourlyRate / 60) * durationMin);
 
-  // ----------------------------
-  // 5. If payment required → create Stripe session
-  // ----------------------------
+  // 5. Payment required — create a Payment record + Stripe Checkout session
   if (requiresPayment) {
-    const payment = await prisma.payment.create({
-      data: {
-        userId: menteeId,
-        amount: price,
-        currency: "usd",
-        purpose: "booking",
-        status: "PENDING",
-      },
-    });
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      customer_email: user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `Mentor Booking: ${skill.title}`,
-              description: `${durationMin} min session`,
-            },
-            unit_amount: price * 100,
-          },
-          quantity: 1,
+    // START TRANSACTION
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create payment in DB
+      const payment = await tx.payment.create({
+        data: {
+          userId: menteeId,
+          amount: price,
+          currency: "usd",
+          purpose: "booking",
+          status: "PENDING",
         },
-      ],
-      metadata: {
-        menteeId,
-        mentorId,
-        skillId,
-        durationMin,
-        scheduledAt,
-        paymentId: payment.id,
-        price,
-      },
-      success_url: `${process.env.SUCCESS_URL}/payment-success`,
-      cancel_url: `${process.env.CANCEL_URL}/payment-cancel`,
+      });
+
+      // 2. Create booking (PENDING) — optional (only if you want)
+      const booking = await tx.booking.create({
+        data: {
+          menteeId,
+          mentorId,
+          skillId,
+          scheduledAt,
+          durationMin,
+          pricePaid: price,
+          status: "PENDING",
+        },
+      });
+
+      return { payment, booking };
     });
 
-    return { paymentUrl: session.url };
+    const { payment, booking } = result;
+
+    let session;
+
+    try {
+      // 3. Create Stripe session (external call — may fail)
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Mentor Booking: ${skill.title}`,
+                description: `${durationMin} min session`,
+              },
+              unit_amount: price * 100,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          purpose: "booking",
+          menteeId,
+          mentorId,
+          skillId,
+          durationMin: String(durationMin),
+          scheduledAt: String(scheduledAt),
+          paymentId: payment.id,
+          price: String(price),
+        },
+        success_url: `${process.env.SUCCESS_URL}/payment-success`,
+        cancel_url: `${process.env.CANCEL_URL}/payment-cancel`,
+      });
+    } catch (err) {
+      console.error("Stripe session creation failed:", err);
+
+      // If stripe fails, rollback DB changes
+      await prisma.$transaction([
+        prisma.booking.delete({ where: { id: booking.id } }),
+        prisma.payment.delete({ where: { id: payment.id } }),
+      ]);
+
+      throw new Error("Could not initiate payment.");
+    }
+
+    // SUCCESS → return session URL
+    return {
+      paymentUrl: session.url,
+      sessionId: session.id,
+      paymentId: payment.id,
+      bookingId: booking.id,
+    };
   }
 
-  // ----------------------------
-  // 6. User has free limit OR premium user → free booking
-  // ----------------------------
-  return await prisma.booking.create({
+  // 6. Free booking (no payment required)
+  const booking = await prisma.booking.create({
     data: {
       menteeId,
       mentorId,
       skillId,
       scheduledAt: new Date(scheduledAt),
       durationMin,
-      pricePaid: 0,
       status: "ACCEPTED",
+      pricePaid: 0,
     },
   });
+
+  return booking;
 };
-
-// const createBooking = async (menteeId: string, data: any) => {
-//   const { mentorId, skillId, scheduledAt, durationMin } = data;
-
-//   // ----------------------------
-//   // 1. Fetch mentee info
-//   // ----------------------------
-//   const mentee = await prisma.user.findUnique({
-//     where: { id: menteeId },
-//     select: { isPremium: true, premiumExpires: true },
-//   });
-//   if (!mentee) throw new Error("Mentee not found");
-
-//   // ----------------------------
-//   // 2. Mentee premium check
-//   // ----------------------------
-//   const menteePremiumValid =
-//     mentee.isPremium &&
-//     mentee.premiumExpires &&
-//     new Date(mentee.premiumExpires) > new Date();
-
-//   if (!menteePremiumValid) {
-//     const activeBookings = await prisma.booking.count({
-//       where: {
-//         menteeId,
-//         status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
-//       },
-//     });
-
-//     if (activeBookings >= FREE_USER_BOOKING_LIMIT) {
-//       throw new Error(
-//         `Free users can only have ${FREE_USER_BOOKING_LIMIT} active bookings. Upgrade to premium for unlimited sessions.`
-//       );
-//     }
-//   }
-
-//   // ----------------------------
-//   // 3. Fetch skill & mentor info
-//   // ----------------------------
-//   const skill = await prisma.skill.findUnique({
-//     where: { id: skillId },
-//     include: { owner: true }, // include mentor
-//   });
-//   if (!skill) throw new Error("Skill not found");
-
-//   // Prevent self-booking
-//   if (skill.ownerId === menteeId) {
-//     throw new Error("You cannot book your own skill");
-//   }
-
-//   // ----------------------------
-//   // 4. Mentor premium check
-//   // ----------------------------
-//   const mentor = skill.owner;
-
-//   const mentorPremiumValid =
-//     mentor.isPremium &&
-//     mentor.premiumExpires &&
-//     new Date(mentor.premiumExpires) > new Date();
-
-//   if (!mentorPremiumValid) {
-//     throw new Error("This mentor's premium has expired. You cannot book them.");
-//   }
-
-//   // ----------------------------
-//   // 5. Create booking
-//   // ----------------------------
-//   return prisma.booking.create({
-//     data: {
-//       menteeId,
-//       mentorId,
-//       skillId,
-//       scheduledAt: new Date(scheduledAt),
-//       durationMin,
-//     },
-//   });
-// };
 
 export const getBookingsAsMentee = async (
   menteeId: string,

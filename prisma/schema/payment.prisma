@@ -4,7 +4,7 @@ model Payment {
   amount        Int
   currency      String        @default("BDT")
   purpose       String
-  transactionId String?
+  transactionId String? @unique
   status        PaymentStatus @default(PENDING)
   rawResponse   Json?
   createdAt     DateTime      @default(now())

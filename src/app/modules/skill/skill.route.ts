@@ -28,7 +28,7 @@ router.get("/:id", SkillController.getSkillById);
 // Admin can create both system skills + custom skills
 router.post(
   "/",
-  auth(Role.USER, Role.MENTOR, Role.ADMIN),
+  auth(Role.ADMIN),
   upload.single("file"),
   SkillController.createSkill
 );

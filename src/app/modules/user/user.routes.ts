@@ -25,12 +25,12 @@ router.get(
 );
 
 // ===============================
-// GET SINGLE USER (Admin or Self)
+// GET SINGLE USER 
 // ===============================
 router.get("/:id", auth(), UserController.getUserById);
 
 // ===============================
-// CREATE USER (Admin Only)
+// CREATE USER 
 // ===============================
 router.post(
   "/create",

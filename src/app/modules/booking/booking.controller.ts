@@ -4,16 +4,43 @@ import catchAsync from "../../shared/catchAsync";
 import sendResponse from "../../shared/sendResponse";
 import pick from "../../helper/pick";
 
-const createBooking = async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const data = req.body;
+// const createBooking = async (req: Request, res: Response) => {
+//   const userId = req.user!.id;
+//   const data = req.body;
 
-  if (!userId) {
-    return res.status(403).json({ message: "Forbidden" });
+//   if (!userId) {
+//     return res.status(403).json({ message: "Forbidden" });
+//   }
+
+//   const booking = await bookingService.createBooking(userId, data);
+//   res.status(201).json({ message: "Booking created", booking });
+// };
+
+export const createBooking = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    if (!userId) return res.status(403).json({ message: "Forbidden" });
+
+    const data = req.body;
+
+    const result = await bookingService.createBooking(userId, data);
+
+    // If result.paymentUrl exists → payment required
+    if ((result as any).paymentUrl) {
+      return res.status(200).json({
+        message: "Payment required",
+        paymentUrl: (result as any).paymentUrl,
+        sessionId: (result as any).sessionId,
+        paymentId: (result as any).paymentId,
+      });
+    }
+
+    // Free booking created — return booking object
+    return res.status(201).json({ message: "Booking created", booking: result });
+  } catch (err: any) {
+    console.error(err);
+    return res.status(400).json({ message: err.message || "Failed" });
   }
-
-  const booking = await bookingService.createBooking(userId, data);
-  res.status(201).json({ message: "Booking created", booking });
 };
 
 const getMyBookings = catchAsync(async (req, res) => {
