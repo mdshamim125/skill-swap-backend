@@ -44,6 +44,18 @@ const getAllSkills = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// GET ALL SKILLS (NO PAGINATION, NO FILTERING)
+const getSkills = catchAsync(async (req: Request, res: Response) => {
+  const result = await SkillService.getSkills();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Skills retrieved successfully",
+    data: result,
+  });
+});
+
 // GET SKILL BY ID
 const getSkillById = catchAsync(async (req: Request, res: Response) => {
   const result = await SkillService.getSkillById(req.params.id);
@@ -101,4 +113,5 @@ export const SkillController = {
   getSkillById,
   updateSkill,
   deleteSkill,
+  getSkills
 };

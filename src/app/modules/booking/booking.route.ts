@@ -27,7 +27,7 @@ router.get(
 // ===============================
 // GET BOOKINGS (As Mentor)
 // ===============================
-router.get("/mentor", auth(Role.MENTOR), BookingController.getBookingsAsMentor);
+router.get("/mentor-schedules", auth(Role.MENTOR), BookingController.getBookingsAsMentor);
 
 // ===============================
 // GET SINGLE BOOKING (Mentor or Mentee)

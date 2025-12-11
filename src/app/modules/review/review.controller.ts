@@ -17,7 +17,9 @@ const createReview = catchAsync(async (req, res) => {
 });
 
 const getAllReviews = catchAsync(async (req, res) => {
-  const mentorId = req.params.mentorId;
+  const mentorId = req.user!.id;
+
+  
 
   const result = await ReviewService.getAllReviews(mentorId);
 
@@ -30,7 +32,7 @@ const getAllReviews = catchAsync(async (req, res) => {
 });
 
 const getReviewsForMentor = catchAsync(async (req, res) => {
-  const mentorId = req.params.mentorId;
+  const mentorId = req.user!.id;
 
   const result = await ReviewService.getReviewsForMentor(mentorId);
 

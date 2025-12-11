@@ -97,6 +97,16 @@ const getSkillById = async (id: string) => {
   return prisma.skill.findUnique({ where: { id } });
 };
 
+const getSkills = async () => {
+  const skills = await prisma.skill.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return skills;
+};
+
 // ===============================
 // Update Skill (Admin only)
 // ===============================
@@ -157,4 +167,5 @@ export const SkillService = {
   getSkillById,
   updateSkill,
   deleteSkill,
+  getSkills
 };

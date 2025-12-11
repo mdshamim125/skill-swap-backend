@@ -17,6 +17,7 @@ const upload = multer({
 // Public Routes
 // ----------------------
 router.get("/", SkillController.getAllSkills);
+router.get("/all", SkillController.getSkills);
 router.get("/:id", SkillController.getSkillById);
 
 // ----------------------
@@ -37,10 +38,6 @@ router.post(
 router.patch("/:id", auth(Role.ADMIN), SkillController.updateSkill);
 
 // Delete skill
-router.delete(
-  "/:id",
-  auth(Role.ADMIN),
-  SkillController.deleteSkill
-);
+router.delete("/:id", auth(Role.ADMIN), SkillController.deleteSkill);
 
 export const skillRoutes = router;
