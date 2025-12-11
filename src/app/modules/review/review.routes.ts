@@ -9,10 +9,12 @@ const router = express.Router();
 // Create review
 router.post(
   "/",
-  auth("STUDENT"), // Only students can review
+  auth(), 
   validateRequest(ReviewValidation.create),
   ReviewController.createReview
 );
+
+router.get("/:mentorId", ReviewController.getAllReviews);
 
 // Get all reviews for a mentor
 router.get("/mentor/:mentorId", ReviewController.getReviewsForMentor);

@@ -16,6 +16,19 @@ const createReview = catchAsync(async (req, res) => {
   });
 });
 
+const getAllReviews = catchAsync(async (req, res) => {
+  const mentorId = req.params.mentorId;
+
+  const result = await ReviewService.getAllReviews(mentorId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Reviews fetched successfully",
+    data: result,
+  });
+});
+
 const getReviewsForMentor = catchAsync(async (req, res) => {
   const mentorId = req.params.mentorId;
 
@@ -60,4 +73,5 @@ export const ReviewController = {
   getReviewsForMentor,
   updateReview,
   deleteReview,
+  getAllReviews,
 };

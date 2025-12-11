@@ -146,9 +146,8 @@ export const getActiveMentors = async (
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
-  const {  skills, category } = params;
+  const { skills, category } = params;
   const searchTerm = params.searchTerm || "";
-
 
   const andConditions: any[] = [];
 
@@ -217,8 +216,8 @@ export const getActiveMentors = async (
   // ----------------------------
   andConditions.push({
     role: "MENTOR",
-    isPremium: true,
-    premiumExpires: { gt: new Date() },
+    // isPremium: true,
+    // premiumExpires: { gt: new Date() },
   });
 
   const whereConditions = { AND: andConditions };
@@ -257,11 +256,6 @@ export const getSingleActiveMentor = async (id: string) => {
   const whereConditions: any = {
     id,
     role: "MENTOR",
-    isPremium: true,
-    premiumExpires: { gt: new Date() },
-    // offeredSkills: {
-    //   some: { isPublished: true },
-    // },
   };
 
   const mentor = await prisma.user.findFirst({
@@ -269,11 +263,26 @@ export const getSingleActiveMentor = async (id: string) => {
     include: {
       profile: {
         include: {
-          skills: true, // 🔥 Fetch profile.skills relation
+          skills: true,
         },
       },
+
       offeredSkills: {
         where: { isPublished: true },
+      },
+
+      // 🔥 Include all reviews received by this mentor
+      reviewsReceived: {
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
       },
     },
   });

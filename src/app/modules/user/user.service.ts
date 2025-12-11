@@ -305,8 +305,8 @@ const getTopRatedMentors = async () => {
   const mentors = await prisma.user.findMany({
     where: {
       role: "MENTOR", // Must be mentor
-      isPremium: true, // Must be premium mentor
-      premiumExpires: { gt: new Date() }, // Premium must still be active
+      // isPremium: true, // Must be premium mentor
+      // premiumExpires: { gt: new Date() }, // Premium must still be active
       averageRating: { gte: 0 }, // Has rating
     },
 

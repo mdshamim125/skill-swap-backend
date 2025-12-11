@@ -5,8 +5,7 @@ import notFound from "./app/middlewares/notFound";
 import config from "./config";
 import router from "./app/routes";
 import cookieParser from "cookie-parser";
-import { webhookRouter } from "./app/routes/webhook";
-
+import { handleStripeWebhook } from "./app/routes/webhook.controller";
 
 const app: Application = express();
 app.use(
@@ -16,14 +15,14 @@ app.use(
   })
 );
 
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
 
 //parser
 app.use(express.json());
-app.use("/webhook", express.raw({ type: "application/json" }));
-app.use("/webhook", webhookRouter);
-
-
-
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 

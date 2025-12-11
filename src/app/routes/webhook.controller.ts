@@ -118,6 +118,23 @@ async function handleCheckoutSessionCompleted(
 async function processBooking(meta: BookingMetadata) {
   const { menteeId, mentorId, skillId, scheduledAt, durationMin, price } = meta;
 
+  console.log(
+    "meta:",
+    meta,
+    "menteeId:",
+    menteeId,
+    "mentorId:",
+    mentorId,
+    "skillId:",
+    skillId,
+    "scheduledAt:",
+    scheduledAt,
+    "durationMin:",
+    durationMin,
+    "price:",
+    price
+  );
+
   const schedule = new Date(scheduledAt);
 
   const existing = await prisma.booking.findFirst({
@@ -163,6 +180,19 @@ async function processSubscription(
   session: Stripe.Checkout.Session
 ) {
   const { userId, planId, durationDays } = meta;
+
+  console.log(
+    "meta:",
+    meta,
+    "session:",
+    session,
+    "user:",
+    userId,
+    "planId: ",
+    planId,
+    "durationDays:",
+    durationDays
+  );
 
   const plan = await prisma.subscriptionPlan.findUnique({
     where: { id: planId },

@@ -3,10 +3,7 @@ import httpStatus from "http-status";
 import { IReviewCreate, IReviewUpdate } from "./review.interface";
 import { prisma } from "../../shared/prisma";
 
-const createReview = async (
-  payload: IReviewCreate,
-  reviewerId: string
-) => {
+const createReview = async (payload: IReviewCreate, reviewerId: string) => {
   const { targetUserId, bookingId, rating, comment } = payload;
 
   // 1. Confirm that user has booking with mentor
@@ -15,7 +12,9 @@ const createReview = async (
       id: bookingId,
       menteeId: reviewerId,
       mentorId: targetUserId,
-      status: "COMPLETED",
+      status: {
+        in: ["ACCEPTED", "PENDING"],
+      },
     },
   });
 
@@ -70,6 +69,32 @@ const updateMentorAverageRating = async (mentorId: string) => {
     where: { id: mentorId },
     data: {
       averageRating: result._avg.rating ?? 0,
+    },
+  });
+};
+
+const getAllReviews = async (mentorId: string) => {
+  return await prisma.review.findMany({
+    where: {
+      targetUserId: mentorId,
+    },
+    include: {
+      reviewer: {
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+        },
+      },
+      booking: {
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
     },
   });
 };
@@ -130,4 +155,5 @@ export const ReviewService = {
   getReviewsForMentor,
   updateReview,
   deleteReview,
+  getAllReviews,
 };
