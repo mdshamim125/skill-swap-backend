@@ -17,7 +17,7 @@ app.use(
 
 app.post(
   "/webhook",
-  express.raw({ type: "application/json" }),
+  express.raw({ type: "*/*"}),
   handleStripeWebhook
 );
 

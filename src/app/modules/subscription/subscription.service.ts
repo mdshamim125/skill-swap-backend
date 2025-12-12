@@ -86,10 +86,12 @@ export const paymentService = {
           },
         ],
         metadata: {
+          purpose: "subscription", // <-- add this
           userId,
           planId,
           subscriptionId: subscription.id,
           paymentId: payment.id,
+          durationDays: String(plan.durationDays), // <- add durationDays for webhook
         },
         success_url: `${process.env.SUCCESS_URL}/payment-success`,
         cancel_url: `${process.env.CANCEL_URL}/payment-cancel`,

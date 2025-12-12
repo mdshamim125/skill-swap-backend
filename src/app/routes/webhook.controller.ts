@@ -92,7 +92,8 @@ async function handleCheckoutSessionCompleted(
     where: { id: payment.id },
     data: {
       status: PaymentStatus.SUCCESS,
-      transactionId: session.payment_intent as string,
+      // transactionId: session.payment_intent as string,
+      transactionId: session.id as string, // use checkout session id (consistent with service)
       rawResponse: JSON.parse(JSON.stringify(session)), // FIXED
     },
   });

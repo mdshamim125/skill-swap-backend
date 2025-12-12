@@ -15,8 +15,8 @@ async function bootstrap() {
     });
 
     // ✅ Initialize Socket.io with the HTTP server
-    initSocket(server);
-    console.log("🔥 Socket.io initialized");
+    // initSocket(server);
+    // console.log("🔥 Socket.io initialized");
 
     // Function to gracefully shut down the server
     const exitHandler = () => {
