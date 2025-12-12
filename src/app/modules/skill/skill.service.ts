@@ -1,6 +1,5 @@
 import { prisma } from "../../shared/prisma";
 import { ISkillCreatePayload, ISkillUpdatePayload } from "./skill.interface";
-import { fileUploader } from "../../helper/fileUploader";
 import { Prisma, Role } from "@prisma/client";
 import { paginationHelper, IOptions } from "../../helper/paginationHelper";
 import { skillSearchableFields, skillFilterableFields } from "./skill.constant";
@@ -11,7 +10,6 @@ import { skillSearchableFields, skillFilterableFields } from "./skill.constant";
 const createSkill = async (
   admin: { id: string; role: Role },
   payload: ISkillCreatePayload,
-  file?: Express.Multer.File
 ) => {
   if (admin.role !== Role.ADMIN) {
     throw new Error("Only admin can create skills");
@@ -19,10 +17,6 @@ const createSkill = async (
 
   let imageUrl: string | undefined;
 
-  if (file) {
-    const uploaded = await fileUploader.uploadToCloudinary(file);
-    imageUrl = uploaded?.secure_url;
-  }
 
   const created = await prisma.skill.create({
     data: {
@@ -122,13 +116,6 @@ const updateSkill = async (
   const skill = await prisma.skill.findUnique({ where: { id: skillId } });
   if (!skill) throw new Error("Skill not found");
 
-  let imageUrl: string | undefined;
-  if ((payload as any).file) {
-    const uploaded = await fileUploader.uploadToCloudinary(
-      (payload as any).file
-    );
-    imageUrl = uploaded?.secure_url;
-  }
 
   const updated = await prisma.skill.update({
     where: { id: skillId },
@@ -143,7 +130,6 @@ const updateSkill = async (
         payload.isPublished !== undefined
           ? payload.isPublished
           : skill.isPublished,
-      ...(imageUrl ? { imageUrl } : {}),
     },
   });
 

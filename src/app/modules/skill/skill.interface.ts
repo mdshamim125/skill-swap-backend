@@ -24,5 +24,4 @@ export interface ISkillUpdatePayload {
   isPublished?: boolean;
 
   isCustom?: boolean;             // rarely changed, but included for safety
-  file?: Express.Multer.File;
 }

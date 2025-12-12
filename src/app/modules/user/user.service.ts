@@ -1,8 +1,7 @@
 import { Request } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../shared/prisma";
-import { fileUploader } from "../../helper/fileUploader";
-import { IOptions, paginationHelper } from "../../helper/paginationHelper";
+import { paginationHelper } from "../../helper/paginationHelper";
 import { Prisma, Role, UserStatus } from "@prisma/client";
 import { userSearchableFields, userFilterableFields } from "./user.constant";
 
@@ -15,11 +14,6 @@ import { userSearchableFields, userFilterableFields } from "./user.constant";
 const createUser = async (req: Request, role: Role) => {
   let avatarUrl: string | undefined;
 
-  // Upload avatar if provided
-  if (req.file) {
-    const uploaded = await fileUploader.uploadToCloudinary(req.file);
-    avatarUrl = uploaded?.secure_url;
-  }
 
   const hashedPassword = await bcrypt.hash(req.body.password, 10);
 

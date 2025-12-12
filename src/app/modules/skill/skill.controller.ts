@@ -12,12 +12,10 @@ const createSkill = catchAsync(async (req: Request, res: Response) => {
   const user = req.user!;
 
   const payload = req.body;
-  const file = req.file as Express.Multer.File | undefined;
 
   const result = await SkillService.createSkill(
     { id: user.id, role: user.role }, // <-- correct object
     payload,
-    file
   );
 
   sendResponse(res, {
