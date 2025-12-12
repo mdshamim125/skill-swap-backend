@@ -8,12 +8,17 @@ import cookieParser from "cookie-parser";
 import { handleStripeWebhook } from "./app/routes/webhook.controller";
 
 const app: Application = express();
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://skill-swap-frontend-inky.vercel.app"
+    ],
     credentials: true,
   })
 );
+
 
 app.post(
   "/webhook",
