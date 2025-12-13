@@ -9,22 +9,19 @@ import { handleStripeWebhook } from "./app/routes/webhook.controller";
 
 const app: Application = express();
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://skill-swap-frontend-inky.vercel.app"
+      "https://skill-swap-frontend-inky.vercel.app",
     ],
     credentials: true,
   })
 );
 
-
-app.post(
-  "/webhook",
-  express.raw({ type: "*/*"}),
-  handleStripeWebhook
-);
+app.post("/webhook", express.raw({ type: "*/*" }), handleStripeWebhook);
 
 //parser
 app.use(express.json());
