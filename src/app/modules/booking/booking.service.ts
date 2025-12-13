@@ -1,3 +1,164 @@
+// import { BookingStatus } from "@prisma/client";
+// import { prisma } from "../../shared/prisma";
+// import { stripe } from "../../helper/stripe";
+// import { IOptions, paginationHelper } from "../../helper/paginationHelper";
+
+// const FREE_USER_BOOKING_LIMIT = 3;
+
+// export const createBooking = async (menteeId: string, data: any) => {
+//   const { mentorId, skillId, scheduledAt, durationMin } = data;
+
+//   // 1. Validate mentee
+//   const user = await prisma.user.findUnique({
+//     where: { id: menteeId },
+//     select: { email: true, isPremium: true, premiumExpires: true },
+//   });
+//   if (!user) throw new Error("Unauthorized user");
+
+//   // check premium validity
+//   const isPremiumValid =
+//     user.isPremium &&
+//     user.premiumExpires &&
+//     new Date(user.premiumExpires) > new Date();
+
+//   // 2. Check free booking limit only if NOT premium
+//   let requiresPayment = false;
+//   if (!isPremiumValid) {
+//     const activeBookings = await prisma.booking.count({
+//       where: { menteeId, status: { in: ["PENDING", "ACCEPTED"] } },
+//     });
+//     if (activeBookings >= FREE_USER_BOOKING_LIMIT) {
+//       requiresPayment = true;
+//     }
+//   }
+
+//   // 3. Fetch skill + mentor
+//   const skill = await prisma.skill.findUnique({
+//     where: { id: skillId },
+//     include: { owner: true },
+//   });
+//   if (!skill) throw new Error("Skill not found");
+//   if (skill.ownerId === menteeId) throw new Error("You cannot book yourself");
+//   const mentor = skill.owner!;
+
+//   // Mentor must have valid premium
+//   const mentorPremiumValid =
+//     mentor.isPremium &&
+//     mentor.premiumExpires &&
+//     new Date(mentor.premiumExpires) > new Date();
+//   if (!mentorPremiumValid) {
+//     throw new Error("This mentor's premium has expired.");
+//   }
+
+//   // 4. Price calc
+//   const hourlyRate = skill.pricePerHour ?? 200;
+//   const price = Math.round((hourlyRate / 60) * durationMin);
+
+//   // 5. Payment required — create a Payment record + Stripe Checkout session
+//   if (requiresPayment) {
+//     // START TRANSACTION
+//     const result = await prisma.$transaction(async (tx) => {
+//       // 1. Create payment in DB
+//       const payment = await tx.payment.create({
+//         data: {
+//           userId: menteeId,
+//           amount: price,
+//           currency: "usd",
+//           purpose: "booking",
+//           status: "PENDING",
+//         },
+//       });
+
+//       // 2. Create booking (PENDING) — optional (only if you want)
+//       const booking = await tx.booking.create({
+//         data: {
+//           menteeId,
+//           mentorId,
+//           skillId,
+//           scheduledAt,
+//           durationMin,
+//           pricePaid: price,
+//           status: "PENDING",
+//         },
+//       });
+
+//       return { payment, booking };
+//     });
+
+//     const { payment, booking } = result;
+
+//     let session;
+
+//     try {
+//       // 3. Create Stripe session (external call — may fail)
+//       session = await stripe.checkout.sessions.create({
+//         payment_method_types: ["card"],
+//         mode: "payment",
+//         customer_email: user.email,
+//         line_items: [
+//           {
+//             price_data: {
+//               currency: "usd",
+//               product_data: {
+//                 name: `Mentor Booking: ${skill.title}`,
+//                 description: `${durationMin} min session`,
+//               },
+//               unit_amount: price * 100,
+//             },
+//             quantity: 1,
+//           },
+//         ],
+//         metadata: {
+//           purpose: "booking",
+//           menteeId,
+//           mentorId,
+//           skillId,
+//           durationMin: String(durationMin),
+//           scheduledAt: String(scheduledAt),
+//           paymentId: payment.id,
+//           price: String(price),
+//         },
+//         success_url: `${process.env.SUCCESS_URL}/payment-success`,
+//         cancel_url: `${process.env.CANCEL_URL}/payment-cancel`,
+//       });
+//     } catch (err) {
+//       console.error("Stripe session creation failed:", err);
+
+//       // If stripe fails, rollback DB changes
+//       await prisma.$transaction([
+//         prisma.booking.delete({ where: { id: booking.id } }),
+//         prisma.payment.delete({ where: { id: payment.id } }),
+//       ]);
+
+//       throw new Error("Could not initiate payment.");
+//     }
+
+//     // SUCCESS → return session URL
+//     return {
+//       paymentUrl: session.url,
+//       sessionId: session.id,
+//       paymentId: payment.id,
+//       bookingId: booking.id,
+//     };
+//   }
+
+//   // 6. Free booking (no payment required)
+//   const booking = await prisma.booking.create({
+//     data: {
+//       menteeId,
+//       mentorId,
+//       skillId,
+//       scheduledAt: new Date(scheduledAt),
+//       durationMin,
+//       status: "ACCEPTED",
+//       pricePaid: 0,
+//     },
+//   });
+
+//   return booking;
+// };
+
+// services/booking.service.ts  (or the file you already have)
 import { BookingStatus } from "@prisma/client";
 import { prisma } from "../../shared/prisma";
 import { stripe } from "../../helper/stripe";
@@ -69,13 +230,13 @@ export const createBooking = async (menteeId: string, data: any) => {
         },
       });
 
-      // 2. Create booking (PENDING) — optional (only if you want)
+      // 2. Create booking (PENDING)
       const booking = await tx.booking.create({
         data: {
           menteeId,
           mentorId,
           skillId,
-          scheduledAt,
+          scheduledAt: new Date(scheduledAt),
           durationMin,
           pricePaid: price,
           status: "PENDING",
@@ -88,7 +249,6 @@ export const createBooking = async (menteeId: string, data: any) => {
     const { payment, booking } = result;
 
     let session;
-
     try {
       // 3. Create Stripe session (external call — may fail)
       session = await stripe.checkout.sessions.create({
@@ -116,6 +276,7 @@ export const createBooking = async (menteeId: string, data: any) => {
           durationMin: String(durationMin),
           scheduledAt: String(scheduledAt),
           paymentId: payment.id,
+          bookingId: booking.id, // <-- important: include bookingId
           price: String(price),
         },
         success_url: `${process.env.SUCCESS_URL}/payment-success`,
@@ -133,7 +294,7 @@ export const createBooking = async (menteeId: string, data: any) => {
       throw new Error("Could not initiate payment.");
     }
 
-    // SUCCESS → return session URL
+    // SUCCESS → return session URL and ids
     return {
       paymentUrl: session.url,
       sessionId: session.id,

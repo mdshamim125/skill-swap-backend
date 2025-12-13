@@ -37,9 +37,9 @@ const listMentors = catchAsync(async (req: Request, res: Response) => {
    Get a single active mentor
 ----------------------------- */
 const getSingleMentor = catchAsync(async (req: Request, res: Response) => {
-  const { mentorId } = req.params;
+  const { id } = req.params;
 
-  const result = await getSingleActiveMentor(mentorId);
+  const result = await getSingleActiveMentor(id);
 
   if (!result.success) {
     return sendResponse(res, {
