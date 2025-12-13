@@ -9,7 +9,11 @@ import { Role } from "@prisma/client";
 const auth = (...roles: Role[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const token = req.cookies?.accessToken;
+      // const token = req.cookies?.accessToken;
+
+      const token =
+        req.headers.authorization?.replace("Bearer ", "") ||
+        req.cookies?.accessToken;
 
       if (!token) {
         throw new ApiError(
