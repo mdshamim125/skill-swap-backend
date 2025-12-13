@@ -1,8 +1,8 @@
 import express, { NextFunction, Request, Response } from "express";
 import { UserController } from "./user.controller";
+import auth from "../../middlewares/auth";
 import { Role } from "@prisma/client";
 import { createUserSchemaValidation } from "./user.validation";
-import auth from './../../middlewares/auth';
 
 const router = express.Router();
 
@@ -24,12 +24,12 @@ router.get(
 );
 
 // ===============================
-// GET SINGLE USER 
+// GET SINGLE USER
 // ===============================
 router.get("/:id", auth(), UserController.getUserById);
 
 // ===============================
-// CREATE USER 
+// CREATE USER
 // ===============================
 router.post(
   "/create",
@@ -44,29 +44,33 @@ router.post(
 // ===============================
 // UPDATE USER PROFILE
 // ===============================
-router.patch("/", auth(), (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (req.is("application/json")) {
-      return UserController.updateUser(req, res, next);
-    }
+router.patch(
+  "/",
+  auth(Role.ADMIN, Role.USER, Role.MENTOR),
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.is("application/json")) {
+        return UserController.updateUser(req, res, next);
+      }
 
-    if (typeof req.body.payload === "string") {
-      req.body = JSON.parse(req.body.payload);
-      return UserController.updateUser(req, res, next);
-    }
+      if (typeof req.body.payload === "string") {
+        req.body = JSON.parse(req.body.payload);
+        return UserController.updateUser(req, res, next);
+      }
 
-    return res.status(400).json({
-      success: false,
-      message: "Invalid update payload",
-    });
-  } catch (err) {
-    console.error("PATCH /user parse error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server parse error",
-    });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid update payload",
+      });
+    } catch (err) {
+      console.error("PATCH /user parse error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Server parse error",
+      });
+    }
   }
-});
+);
 
 // ===============================
 // UPDATE USER ROLE (Admin Only)
