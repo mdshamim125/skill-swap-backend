@@ -18,6 +18,7 @@ const login = catchAsync(async (req: Request, res: Response) => {
     secure: true,
     httpOnly: true,
     sameSite: "none",
+    path: "/",
     maxAge: 1000 * 60 * 60 * 24 * 90,
   });
 
@@ -40,6 +41,7 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
     secure: true,
     httpOnly: true,
     sameSite: "none",
+    path: "/",
     maxAge: 1000 * 60 * 60,
   });
 
